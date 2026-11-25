@@ -22,15 +22,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #hsLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 58%,rgba(3,10,18,.55) 100%)}
-.hs{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:auto;cursor:pointer;transition:opacity .3s}
-.hs .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.95);background:rgba(214,179,106,.38);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .35s var(--ease),background .3s}
-.hs .ring::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff}
-.hs .pulse{position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--gold2);animation:pulse 2.2s ease-out infinite}
-@keyframes pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.1);opacity:0}}
+.hs{position:absolute;left:0;top:0;width:30px;height:30px;margin:-15px 0 0 -15px;pointer-events:auto;cursor:pointer;transition:opacity .3s}
+.hs .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.9);background:rgba(11,31,51,.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .35s var(--ease),background .3s}
+.hs .ring::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#fff}
+.hs .pulse{position:absolute;inset:-2px;border-radius:50%;border:1.5px solid rgba(233,207,149,.8);animation:pulse 2.8s ease-out infinite}
+@keyframes pulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.8);opacity:0}}
 .hs .lbl{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translate(-50%,6px);white-space:nowrap;padding:8px 13px;border-radius:10px;background:rgba(11,31,51,.9);border:1px solid rgba(214,179,106,.5);font:600 13px/1.2 Inter;opacity:0;pointer-events:none;transition:all .3s var(--ease)}
 .hs:hover .lbl,.hs:focus-visible .lbl{opacity:1;transform:translate(-50%,0)}
-.hs:hover .ring{transform:scale(1.18);background:rgba(214,179,106,.8)}
-.hs .cnt{position:absolute;right:-6px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--navy2);border:1px solid var(--gold2);font:700 11px/18px Inter;text-align:center;color:var(--gold2)}
+.hs::before{content:"";position:absolute;inset:-8px}
+.hs:hover .ring{transform:scale(1.25);background:rgba(214,179,106,.8)}
+.hs .cnt{position:absolute;right:-8px;top:-8px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--navy2);border:1px solid var(--gold2);font:700 9.5px/14px Inter;text-align:center;color:var(--gold2)}
 .busy #hsLayer .hs{opacity:0;pointer-events:none}
 .cu-nav[hidden]{display:none}
 /* top */
@@ -114,6 +115,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .start:disabled{opacity:.6}
 .credit{position:fixed;right:16px;bottom:22px;z-index:12;font:500 11px Inter;color:rgba(255,255,255,.45)}
 @media (max-width:760px){
+  .hs{width:24px;height:24px;margin:-12px 0 0 -12px}.hs .ring::after{width:6px;height:6px;margin:-3px 0 0 -3px}
   .brand small{display:none}.brand .logo{width:46px;height:46px;border-radius:50%;flex:none;object-fit:cover;box-shadow:0 0 0 2px rgba(214,179,106,.8),0 6px 18px rgba(0,0,0,.35)}
 .intro-logo{width:clamp(120px,18vh,170px);height:auto;border-radius:50%;margin-bottom:18px;box-shadow:0 0 0 3px rgba(214,179,106,.7),0 0 60px rgba(214,179,106,.35);animation:fl 6s ease-in-out infinite}
 @keyframes fl{50%{transform:translateY(-6px)}}
@@ -181,23 +183,23 @@ const EX = {"ММ-001": {"title": "Жанқожа Нұрмұхаммедұлы �
 
 /* ===== Нүктелер: u,v — панорамадағы орны (%) ===== */
 const POINTS = [
-  {id:'keli', u:4.3, v:69.9, l:'Ағаш келі мен келсап', ex:'ММ-011'},
-  {id:'kubi', u:8.9, v:77.1, l:'Ағаш күбі', ex:'ММ-012'},
-  {id:'zakir', u:13.7, v:64.6, l:'Кеме зәкірі', ex:'ММ-003'},
-  {id:'lok', u:14.4, v:15.7, l:'Өлкенің локациялық картасы', info:'lokaciya', shots:['img/o/p08.jpg']},
+  {id:'keli', u:5.6, v:47, l:'Ағаш келі мен келсап', ex:'ММ-011'},
+  {id:'kubi', u:7.0, v:72, l:'Ағаш күбі', ex:'ММ-012'},
+  {id:'zakir', u:15.4, v:57, l:'Кеме зәкірі', ex:'ММ-003'},
+  {id:'lok', u:11, v:24, l:'Өлкенің локациялық картасы', info:'lokaciya', shots:['img/o/p08.jpg']},
   {id:'sore', u:18.8, v:60.2, l:'Көне техника сөресі', info:'sore', shots:['img/o/p06.jpg','img/o/n12.jpg','img/o/n03.jpg','img/o/n10.jpg']},
   {id:'saraman', u:11.2, v:7, l:'Сараман-Қоса мұнарасы', info:'saraman', shots:['img/o/p08.jpg']},
   {id:'saturn', u:18.3, v:6, l:'«Сатурн» кемесі', info:'saturn', shots:['img/o/p08.jpg']},
-  {id:'tilek', u:23.6, v:68.2, l:'Тілек кітабы', info:'tilek'},
-  {id:'ardager', u:30.8, v:29.0, l:'Ардагерлер стенді', info:'ardager', shots:['img/o/p02.jpg','img/o/n11.jpg','img/o/n09.jpg']},
-  {id:'jankozha', u:42.3, v:30.8, l:'Жанқожа Нұрмұхаммедұлы', ex:'ММ-001', walk:'img/o/p01.jpg', walkHs:[{x:20,y:93,shot:'img/o/n08.jpg',l:'«Жанқожа батыр» жинақтары'},{x:72,y:90,shot:'img/o/n16.jpg',l:'«Жанқожа батыр газет беттерінде»'}]},
-  {id:'qr', u:49.5, v:32.6, l:'Жанқожа батыр туралы деректер', info:'qr', shots:['img/o/n14.jpg','img/o/n13.jpg','img/o/n15.jpg']},
-  {id:'kures', u:22.6, v:17.4, l:'Азаттық күрес жолы картасы', info:'kures', shots:['img/o/p07.jpg']},
-  {id:'meshit', u:54.8, v:62.8, l:'Жанқожа атындағы ауыл мешіті', info:'meshit', shots:['img/o/p05.jpg']},
-  {id:'kiim', u:62.5, v:29.9, l:'Оғыз киімі', info:'kiim', shots:['img/o/p03.jpg']},
+  {id:'tilek', u:21.4, v:56, l:'Тілек кітабы', info:'tilek'},
+  {id:'ardager', u:27.2, v:20.5, l:'Ардагерлер стенді', info:'ardager', shots:['img/o/p02.jpg','img/o/n11.jpg','img/o/n09.jpg']},
+  {id:'jankozha', u:45.3, v:43, l:'Жанқожа Нұрмұхаммедұлы', ex:'ММ-001', walk:'img/o/p01.jpg', walkHs:[{x:20,y:93,shot:'img/o/n08.jpg',l:'«Жанқожа батыр» жинақтары'},{x:72,y:90,shot:'img/o/n16.jpg',l:'«Жанқожа батыр газет беттерінде»'}]},
+  {id:'qr', u:49.8, v:27.5, l:'Жанқожа батыр туралы деректер', info:'qr', shots:['img/o/n14.jpg','img/o/n13.jpg','img/o/n15.jpg']},
+  {id:'kures', u:26, v:24, l:'Азаттық күрес жолы картасы', info:'kures', shots:['img/o/p07.jpg']},
+  {id:'meshit', u:52.2, v:65, l:'Жанқожа атындағы ауыл мешіті', info:'meshit', shots:['img/o/p05.jpg']},
+  {id:'kiim', u:63.6, v:30, l:'Оғыз киімі', info:'kiim', shots:['img/o/p03.jpg']},
   {id:'proektor', u:63.0, v:46.8, l:'«Радуга-7» кинопроекторы', ex:'ММ-009', shots:['img/o/p04.jpg']},
-  {id:'kumyra', u:61.1, v:63.7, l:'Қыш құмыра', ex:'ММ-002'},
-  {id:'qyzylqum', u:85.6, v:34.4, l:'Қызылқұм өңірінің тарихы', info:'qyzylqum', walk:'img/o/q1.png'},
+  {id:'kumyra', u:63.6, v:61, l:'Қыш құмыра', ex:'ММ-002'},
+  {id:'qyzylqum', u:84.3, v:31, l:'Қызылқұм өңірінің тарихы', info:'qyzylqum', walk:'img/o/q1.png'},
   {id:'sorelar', u:82.7, v:86.0, l:'Стенд астындағы сөрелер', info:'sorelar', shots:['img/o/n01.jpg','img/o/n02.jpg','img/o/n06.jpg','img/o/n07.jpg','img/o/n04.jpg','img/o/n05.jpg']}
 ];
 /* жақын суреттердегі нүктелер (%) */
