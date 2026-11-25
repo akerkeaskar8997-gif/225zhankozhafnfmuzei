@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Жанқожа ата сауыты — 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{--navy-2:#0B1F33;--gold:#D6B36A}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:#120d09;font-family:Inter,system-ui,sans-serif;color:#f3e6d3}
+  #c{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none}
+  .hint{position:fixed;right:22px;top:26px;font:600 12.5px/1.3 Inter,sans-serif;color:rgba(243,230,211,.65);text-align:right;transition:opacity 1s}
+  .bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px;border-radius:999px;background:rgba(11,31,51,.78);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+  .bar button{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.85);font:600 13.5px/1 Inter,sans-serif;cursor:pointer;transition:background .2s,color .2s;white-space:nowrap}
+  .bar button:hover{background:rgba(255,255,255,.12);color:#fff}
+  .bar button[aria-pressed="true"]{background:var(--gold);color:var(--navy-2)}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#120d09;z-index:10;font-size:15px;font-weight:600;transition:opacity .6s;text-align:center;padding:24px}
+  #loading .ring{width:46px;height:46px;border:4px solid rgba(214,179,106,.25);border-top-color:#D6B36A;border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (max-width:600px){.hint{display:none}.bar{bottom:14px}.bar button{padding:0 12px}.bar .lbl{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Жанқожа ата сауытының 3D моделі"></canvas>
+<div id="loading"><div class="ring"></div><div id="ldtxt">Сауыт тоқылуда…</div></div>
+<div class="hint" id="hint">Сүйреп бұрыңыз · дөңгелекпен жақындатыңыз</div>
+<div class="bar">
+  <button id="bRotate" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span class="lbl">Айналдыру</span></button>
+  <button id="bReset"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg><span class="lbl">Бастапқы көрініс</span></button>
+  <button id="bFull"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg><span class="lbl">Толық экран</span></button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(function(){
+const ldtxt=document.getElementById('ldtxt');
+if(typeof THREE==='undefined'||!THREE.OrbitControls){ldtxt.textContent='3D көрініс ашылмады. Интернет байланысын тексеріп, бетті қайта жүктеңіз.';document.querySelector('#loading .ring').remove();return;}
+
+/* ---------- Негізгі сахна ---------- */
+const canvas=document.getElementById('c');
+let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true});}catch(e){ldtxt.textContent='Бұл құрылғы WebGL қолдамайды.';return;}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x1a120c);
+scene.fog=new THREE.Fog(0x1a120c,7,16);
+if(THREE.RoomEnvironment){const pm=new THREE.PMREMGenerator(renderer);scene.environment=pm.fromScene(new THREE.RoomEnvironment(),0.04).texture;}
+
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.01,50);
+const HOME_POS=new THREE.Vector3(1.35,1.75,2.55), HOME_TGT=new THREE.Vector3(0,1.5,0);
+camera.position.copy(HOME_POS);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.target.copy(HOME_TGT);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=0.12;controls.maxDistance=6;
+controls.maxPolarAngle=Math.PI*0.92;
+controls.autoRotateSpeed=1.2;
+controls.autoRotate=!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* ---------- Текстуралар (canvas) ---------- */
+function canvasTex(w,h,draw,rep){const cv=document.createElement('canvas');cv.width=w;cv.height=h;draw(cv.getContext('2d'),w,h);const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.anisotropy=renderer.capabilities.getMaxAnisotropy();if(rep){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep[0],rep[1]);}return t;}
+function rnd(a,b){return a+Math.random()*(b-a);}
+
+const woodTex=canvasTex(1024,1024,(g,w,h)=>{
+  const plank=128;
+  for(let i=0;i<w/plank;i++){
+    const base=[rnd(78,98),rnd(48,60),rnd(28,36)];
+    g.fillStyle=`rgb(${base[0]|0},${base[1]|0},${base[2]|0})`;g.fillRect(i*plank,0,plank,h);
+    for(let k=0;k<70;k++){g.strokeStyle=`rgba(${rnd(30,60)|0},${rnd(18,30)|0},10,${rnd(.05,.18)})`;g.lineWidth=rnd(1,3);g.beginPath();const x=i*plank+rnd(0,plank);g.moveTo(x,0);g.bezierCurveTo(x+rnd(-8,8),h*.3,x+rnd(-8,8),h*.6,x+rnd(-6,6),h);g.stroke();}
+    g.fillStyle='rgba(0,0,0,.55)';g.fillRect(i*plank,0,3,h);
+    const cut=rnd(0,h);g.fillRect(i*plank,cut,plank,3);
+  }
+},[6,6]);
+
+// қабырға: тек ою-өрнек белдеуі (жазусыз)
+const wallTex=canvasTex(2048,1024,(g,w,h)=>{
+  g.fillStyle='#3b2a1d';g.fillRect(0,0,w,h);
+  for(let i=0;i<9000;i++){g.fillStyle=`rgba(${Math.random()<.5?255:0},${Math.random()<.5?220:0},180,${rnd(.01,.035)})`;g.fillRect(rnd(0,w),rnd(0,h),rnd(1,4),rnd(1,4));}
+  const by=h*0.78, bh=70;
+  g.fillStyle='#5a3b22';g.fillRect(0,by,w,bh);
+  g.strokeStyle='#d9a25e';g.lineWidth=5;g.lineCap='round';
+  g.strokeRect(-10,by+6,w+20,bh-12);
+  for(let x=0;x<w;x+=110){
+    const cx=x+55, cy=by+bh/2;
+    g.beginPath();g.moveTo(cx,cy+18);g.lineTo(cx,cy-4);
+    g.bezierCurveTo(cx,cy-24,cx-30,cy-24,cx-30,cy-6);g.bezierCurveTo(cx-30,cy+6,cx-16,cy+8,cx-14,cy-2);
+    g.moveTo(cx,cy-4);g.bezierCurveTo(cx,cy-24,cx+30,cy-24,cx+30,cy-6);g.bezierCurveTo(cx+30,cy+6,cx+16,cy+8,cx+14,cy-2);
+    g.stroke();
+  }
+});
+
+// тұғырдағы жез тақта (жазусыз)
+const plaqueTex=canvasTex(1024,320,(g,w,h)=>{
+  const gr=g.createLinearGradient(0,0,w,h);gr.addColorStop(0,'#c9984f');gr.addColorStop(.5,'#f0cf8f');gr.addColorStop(1,'#a77a3a');
+  g.fillStyle=gr;g.fillRect(0,0,w,h);
+  g.strokeStyle='rgba(60,35,10,.7)';g.lineWidth=8;g.strokeRect(14,14,w-28,h-28);
+});
+
+const ringBump=canvasTex(128,128,(g,w,h)=>{g.fillStyle='#808080';g.fillRect(0,0,w,h);for(let i=0;i<900;i++){const v=rnd(60,200)|0;g.fillStyle=`rgb(${v},${v},${v})`;g.beginPath();g.arc(rnd(0,w),rnd(0,h),rnd(.5,2.5),0,7);g.fill();}},[2,1]);
+ringBump.encoding=THREE.LinearEncoding;
+
+/* ---------- Бөлме ---------- */
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.MeshStandardMaterial({map:woodTex,roughness:.75,metalness:0}));
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const wall=new THREE.Mesh(new THREE.PlaneGeometry(10,5),new THREE.MeshStandardMaterial({map:wallTex,roughness:.95}));
+wall.position.set(0,2.5,-2.4);wall.receiveShadow=true;scene.add(wall);
+const sideMat=new THREE.MeshStandardMaterial({color:0x2c1f15,roughness:1});
+[-1,1].forEach(s=>{const sw=new THREE.Mesh(new THREE.PlaneGeometry(10,5),sideMat);sw.position.set(s*5,2.5,2.6);sw.rotation.y=-s*Math.PI/2;sw.receiveShadow=true;scene.add(sw);});
+
+// Қоршау арқаны мен тіреулер
+const postMat=new THREE.MeshStandardMaterial({color:0xc9a15a,metalness:.9,roughness:.3});
+const ropeMat=new THREE.MeshStandardMaterial({color:0x7a1414,roughness:.7});
+const postPts=[[-1.25,1.15],[1.25,1.15],[1.6,-0.4],[-1.6,-0.4]];
+postPts.forEach(p=>{const g=new THREE.Group();const base=new THREE.Mesh(new THREE.CylinderGeometry(.12,.14,.04,24),postMat);base.position.y=.02;const pole=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.9,16),postMat);pole.position.y=.47;const top=new THREE.Mesh(new THREE.SphereGeometry(.04,16,12),postMat);top.position.y=.93;g.add(base,pole,top);g.position.set(p[0],0,p[1]);g.traverse(o=>o.castShadow=true);scene.add(g);});
+function rope(a,b){const A=new THREE.Vector3(a[0],.86,a[1]),B=new THREE.Vector3(b[0],.86,b[1]);const M=A.clone().lerp(B,.5);M.y-=.16;const curve=new THREE.QuadraticBezierCurve3(A,M,B);const m=new THREE.Mesh(new THREE.TubeGeometry(curve,30,.018,8),ropeMat);m.castShadow=true;scene.add(m);}
+rope(postPts[3],postPts[0]);rope(postPts[0],postPts[1]);rope(postPts[1],postPts[2]);
+
+/* ---------- Тұғыр ---------- */
+const PED_TOP=0.85;
+const pedMat=new THREE.MeshStandardMaterial({color:0x2a1a10,roughness:.55,metalness:.05});
+const ped=new THREE.Mesh(new THREE.BoxGeometry(.92,PED_TOP,.72),pedMat);ped.position.y=PED_TOP/2;ped.castShadow=ped.receiveShadow=true;scene.add(ped);
+const pedTop=new THREE.Mesh(new THREE.BoxGeometry(.98,.04,.78),new THREE.MeshStandardMaterial({color:0x3a2516,roughness:.4}));pedTop.position.y=PED_TOP+.02;pedTop.castShadow=pedTop.receiveShadow=true;scene.add(pedTop);
+const pedBot=pedTop.clone();pedBot.position.y=.02;scene.add(pedBot);
+const plaque=new THREE.Mesh(new THREE.PlaneGeometry(.56,.175),new THREE.MeshStandardMaterial({map:plaqueTex,metalness:.6,roughness:.35}));plaque.position.set(0,PED_TOP*0.62,.362);scene.add(plaque);
+
+/* ---------- Манекен ---------- */
+const BASE=PED_TOP+0.37;
+const H=0.60;
+const velvet=new THREE.MeshStandardMaterial({color:0x14182a,roughness:.95});
+const prof=[[0.0,BASE+.03],[0.165,BASE+.03],[0.172,BASE+.12],[0.176,BASE+.3],[0.182,BASE+.45],[0.176,BASE+.53],[0.15,BASE+.585],[0.1,BASE+.615],[0.058,BASE+.635],[0.05,BASE+.72],[0.054,BASE+.74],[0.0,BASE+.745]].map(p=>new THREE.Vector2(p[0],p[1]));
+const torso=new THREE.Mesh(new THREE.LatheGeometry(prof,64),velvet);torso.scale.z=0.66;torso.castShadow=true;scene.add(torso);
+const standMat=new THREE.MeshStandardMaterial({color:0x8a6a3a,metalness:.85,roughness:.35});
+const pole=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,BASE-PED_TOP,16),standMat);pole.position.y=(BASE+PED_TOP)/2+.02;pole.castShadow=true;scene.add(pole);
+const disc=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.025,40),standMat);disc.position.y=PED_TOP+.055;disc.castShadow=true;scene.add(disc);
+const neckCap=new THREE.Mesh(new THREE.CylinderGeometry(.056,.056,.012,32),standMat);neckCap.position.y=BASE+.748;scene.add(neckCap);
+
+/* ---------- Сауыт: сақиналар ---------- */
+const RING_R=0.0062, WIRE=0.00118;
+const SP_H=0.0094, SP_V=0.0066;
+const ringGeo=new THREE.TorusGeometry(RING_R,WIRE,5,12);
+const rustMat=new THREE.MeshStandardMaterial({color:0xffffff,metalness:.35,roughness:.88,bumpMap:ringBump,bumpScale:.0006,envMapIntensity:.6});
+const MAX=18000;
+const rings=new THREE.InstancedMesh(ringGeo,rustMat,MAX);
+rings.castShadow=true;rings.receiveShadow=true;
+const tmpM=new THREE.Matrix4(),tmpQ=new THREE.Quaternion(),tmpQ2=new THREE.Quaternion(),tmpS=new THREE.Vector3(1,1,1);
+const Z=new THREE.Vector3(0,0,1);
+let count=0;
+const rustSeeds=[];
+
+function bodyEll(t){
+  let rx=0.198-0.01*t+0.012*Math.sin(Math.PI*t*0.9);
+  let rz=0.128+0.012*Math.sin(Math.PI*t);
+  if(t>0.82){const k=(t-0.82)/0.18;rz-=0.028*k*k;rx-=0.012*k*k;}
+  const fl=1+0.07*Math.pow(1-t,3);
+  return [rx*fl,rz*fl];
+}
+function bodyP(u,th,out){
+  const e=bodyEll(u);
+  const wob=1+0.012*Math.sin(th*7+u*9)*(1-u)+0.008*Math.sin(th*13+u*23);
+  out.set(e[0]*Math.cos(th)*wob,BASE+u*H,e[1]*Math.sin(th)*wob);return out;
+}
+const TOP=bodyEll(1);
+function capP(s,th,out){
+  const c=Math.cos(th),sn=Math.sin(th);
+  const neckRx=0.092,neckRz=0.078,neckOff=0.018;
+  let x,y,z;
+  if(s>=0){
+    const rx=TOP[0]+(neckRx-TOP[0])*s, rz=TOP[1]+(neckRz-TOP[1])*s;
+    x=rx*c;z=rz*sn+neckOff*s;
+    y=BASE+H+0.042*Math.sin(s*Math.PI/2) - 0.028*Math.max(0,sn)*s*s;
+  }else{
+    const k=-s;
+    x=TOP[0]*c*(1+0.22*k); z=TOP[1]*sn*(1+0.1*k);
+    y=BASE+H-0.11*k*k-0.02*k;
+  }
+  out.set(x,y,z);return out;
+}
+
+function addSurface(P,u0,u1,opts){
+  const a=new THREE.Vector3(),b=new THREE.Vector3(),p=new THREE.Vector3(),T=new THREE.Vector3(),U=new THREE.Vector3(),N=new THREE.Vector3(),A=new THREE.Vector3(),ref=new THREE.Vector3();
+  const M=360; let row=0; let u=u0;
+  while(u<=u1+1e-6){
+    const th=[],cum=[0];P(u,0,a);
+    for(let i=0;i<=M;i++){const t=i/M*Math.PI*2;th.push(t);if(i>0){P(u,t,b);cum.push(cum[i-1]+b.distanceTo(a));a.copy(b);}}
+    const L=cum[M];const n=Math.max(8,Math.round(L/SP_H));
+    const off=(row%2)?0.5:0;
+    for(let k=0;k<n;k++){
+      const target=(k+off)/n*L; let j=1;while(j<M&&cum[j]<target)j++;
+      const f=(target-cum[j-1])/(cum[j]-cum[j-1]||1);const t=th[j-1]+(th[j]-th[j-1])*f;
+      if(opts.skip&&opts.skip(u,t))continue;
+      P(u,t,p);
+      P(u,t+0.01,a);P(u,t-0.01,b);T.subVectors(a,b).normalize();
+      P(Math.min(u+0.004,1.2),t,a);P(u-0.004,t,b);U.subVectors(a,b).normalize();
+      N.crossVectors(T,U).normalize();
+      ref.set(p.x,opts.upRef||0,p.z);if(N.dot(ref)<0)N.negate();
+      const tilt=0.78+rnd(-.12,.12), sgn=(row%2)?1:-1;
+      A.copy(N).multiplyScalar(Math.cos(tilt)).addScaledVector(T,Math.sin(tilt)*sgn).addScaledVector(U,rnd(-.12,.12)).normalize();
+      tmpQ.setFromUnitVectors(Z,A);tmpQ2.setFromAxisAngle(A,rnd(0,6.28));tmpQ.premultiply(tmpQ2);
+      const jit=opts.jit?opts.jit(u):0.0006;
+      p.x+=rnd(-jit,jit);p.y+=rnd(-jit,jit)-(opts.sag?opts.sag(u):0);p.z+=rnd(-jit,jit);
+      p.addScaledVector(N,0.0022+rnd(0,.0012));
+      const sc=rnd(.94,1.06);tmpS.set(sc,sc,sc);
+      tmpM.compose(p,tmpQ,tmpS);
+      if(count<MAX){rings.setMatrixAt(count,tmpM);rustSeeds.push(Math.random());count++;}
+    }
+    let d=0;for(let q=0;q<8;q++){const t=q/8*Math.PI*2;P(u+0.002,t,a);P(u,t,b);d+=a.distanceTo(b)/0.002;}d/=8;
+    u+=SP_V/d;row++;
+  }
+}
+addSurface(bodyP,0,1,{
+  skip:(u,t)=>{
+    if(u<0.03&&Math.random()<0.28)return true;
+    if(u>0.64){const half=0.46*Math.sqrt((u-0.64)/0.36);const d=Math.min(Math.abs(Math.atan2(Math.sin(t),Math.cos(t))),Math.abs(Math.atan2(Math.sin(t-Math.PI),Math.cos(t-Math.PI))));if(d<half)return true;}
+    return false;
+  },
+  jit:u=>u<0.04?0.0025:0.0007
+});
+addSurface(capP,0.02,1,{upRef:0.35,skip:()=>false});
+addSurface(capP,-0.42,-0.02,{upRef:-0.1,skip:(u,t)=>{const c=Math.abs(Math.cos(t));if(c<0.62)return true;if(u<-0.36&&Math.random()<0.35)return true;return false;},jit:u=>u<-0.34?0.0022:0.0008});
+rings.count=count;
+
+// Тот басқан темір түстері
+const rustPal=[new THREE.Color(0x5c3b25),new THREE.Color(0x6e472b),new THREE.Color(0x4a2f1d),new THREE.Color(0x7d5634),new THREE.Color(0x654229)]; // қоңыр реңк
+const col=new THREE.Color();
+for(let i=0;i<count;i++){const s=rustSeeds[i];const a=rustPal[Math.floor(s*rustPal.length)],b=rustPal[Math.floor((s*7.13%1)*rustPal.length)];col.copy(a).lerp(b,(s*3.7)%1);rings.setColorAt(i,col);}
+rings.instanceColor.needsUpdate=true;
+scene.add(rings);
+
+/* ---------- Витрина (шыны) ---------- */
+const glass=new THREE.Group();
+const gW=.88,gD=.68,gH=1.26,gY=PED_TOP+.04;
+const glassMat=new THREE.MeshPhysicalMaterial({color:0xcfe6ff,metalness:0,roughness:.05,transparent:true,opacity:.1,depthWrite:false,side:THREE.DoubleSide,envMapIntensity:1.5});
+const gBox=new THREE.Mesh(new THREE.BoxGeometry(gW,gH,gD),glassMat);gBox.position.y=gY+gH/2;glass.add(gBox);
+const frameMat=new THREE.MeshStandardMaterial({color:0x2a1a10,metalness:.4,roughness:.5});
+const e=0.018;
+[[-1,-1],[1,-1],[1,1],[-1,1]].forEach(c=>{const m=new THREE.Mesh(new THREE.BoxGeometry(e,gH,e),frameMat);m.position.set(c[0]*gW/2,gY+gH/2,c[1]*gD/2);glass.add(m);});
+[[gW,e,e,0,-gD/2],[gW,e,e,0,gD/2],[e,e,gD,-gW/2,0],[e,e,gD,gW/2,0]].forEach(d=>{const m=new THREE.Mesh(new THREE.BoxGeometry(d[0],d[1],d[2]),frameMat);m.position.set(d[3],gY+gH,d[4]);glass.add(m);});
+const capTop=new THREE.Mesh(new THREE.BoxGeometry(gW+.04,.05,gD+.04),pedMat);capTop.position.y=gY+gH+.025;glass.add(capTop);
+scene.add(glass);
+
+/* ---------- Жарық ---------- */
+scene.add(new THREE.HemisphereLight(0xffe9cc,0x24160c,0.35));
+const spot=new THREE.SpotLight(0xffd7a3,3.2,10,Math.PI/7,0.55,1.2);
+spot.position.set(1.2,4.2,2.2);spot.target.position.set(0,1.45,0);
+spot.castShadow=true;spot.shadow.mapSize.set(2048,2048);spot.shadow.bias=-0.0004;spot.shadow.radius=3;
+scene.add(spot,spot.target);
+const rim=new THREE.SpotLight(0x9fc4ff,1.6,8,Math.PI/8,0.6,1.5);rim.position.set(-1.6,3.2,-1.6);rim.target.position.set(0,1.5,0);scene.add(rim,rim.target);
+const fill=new THREE.PointLight(0xffb070,0.5,4);fill.position.set(-0.8,1.4,1.4);scene.add(fill);
+const wallWash=new THREE.SpotLight(0xffc888,1.3,9,Math.PI/5,0.8,1);wallWash.position.set(0,4.6,0.6);wallWash.target.position.set(0,2.8,-2.4);scene.add(wallWash,wallWash.target);
+
+/* ---------- Батырмалар ---------- */
+let fly=null;
+function flyTo(pos,tgt,dur=1100){fly={p0:camera.position.clone(),t0:controls.target.clone(),p1:pos,t1:tgt,start:performance.now(),dur};}
+function ease(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;}
+const bRotate=document.getElementById('bRotate');
+function setRotate(on){controls.autoRotate=on;bRotate.setAttribute('aria-pressed',on);}
+setRotate(controls.autoRotate);
+bRotate.onclick=()=>setRotate(!controls.autoRotate);
+document.getElementById('bReset').onclick=()=>flyTo(HOME_POS.clone(),HOME_TGT.clone());
+document.getElementById('bFull').onclick=()=>{try{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();}catch(e){}};
+
+/* ---------- Цикл ---------- */
+function loop(now){
+  requestAnimationFrame(loop);
+  if(fly){const k=Math.min(1,(now-fly.start)/fly.dur),q=ease(k);camera.position.lerpVectors(fly.p0,fly.p1,q);controls.target.lerpVectors(fly.t0,fly.t1,q);if(k>=1)fly=null;}
+  controls.update();
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+controls.addEventListener('start',()=>{fly=null;document.getElementById('hint').style.opacity=0;});
+const ld=document.getElementById('loading');ld.style.opacity=0;setTimeout(()=>ld.remove(),700);
+})();
+</script>
+</body>
+</html>

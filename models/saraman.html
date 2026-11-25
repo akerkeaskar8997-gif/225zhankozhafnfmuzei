@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сараман Қоса мұнарасы — 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#102A43;--navy-2:#0B1F33;--gold:#D6B36A}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+/* фото сияқты: терең көк аспан, көкжиекте ағарады */
+body{font-family:Inter,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#0a2f7a 0%,#1d56b0 30%,#4f8ad0 48%,#a9c6e2 58%,#d9d6c8 66%,#d9d6c8 100%)}
+#stage{position:fixed;inset:0}
+#c3d{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#c3d:active{cursor:grabbing}
+.hint{position:fixed;right:22px;top:26px;font:600 12.5px/1.3 Inter,sans-serif;color:rgba(255,255,255,.8);text-align:right;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+.bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px;border-radius:999px;background:rgba(11,31,51,.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 14px 40px rgba(11,31,51,.35)}
+.bar button{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.85);font:600 13.5px/1 Inter,sans-serif;cursor:pointer;transition:background .2s,color .2s;white-space:nowrap}
+.bar button:hover{background:rgba(255,255,255,.12);color:#fff}
+.bar button[aria-pressed="true"]{background:var(--gold);color:var(--navy-2)}
+.fail{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;font:600 15px/1.5 Inter,sans-serif;background:rgba(11,31,51,.85)}
+@media (max-width:600px){.hint{display:none}.bar{bottom:14px}.bar button{padding:0 12px}.bar .lbl{display:none}}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c3d" aria-label="Сараман Қоса мұнарасының 3D макеті"></canvas></div>
+<div class="hint">Сүйреп бұрыңыз · дөңгелекпен жақындатыңыз</div>
+<div class="bar">
+  <button id="bSpin" aria-pressed="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span class="lbl">Айналдыру</span></button>
+  <button id="bReset"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg><span class="lbl">Бастапқы көрініс</span></button>
+  <button id="bFs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg><span class="lbl">Толық экран</span></button>
+</div>
+<div class="fail" id="fail">3D көрініс ашылмады. Интернет байланысын тексеріп, бетті қайта жүктеңіз.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+function $(id){ return document.getElementById(id); }
+if(typeof THREE === 'undefined'){ $('fail').style.display = 'flex'; return; }
+var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var canvas = $('c3d'), stage = $('stage'), renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true }); }
+catch(e){ $('fail').style.display = 'flex'; return; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xd9d6c8, 70, 190);
+var camera = new THREE.PerspectiveCamera(36, 1, 0.5, 600);
+
+/* ---------- Жарық: кешкі күн, жылы түс ---------- */
+scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x9a8466, 0.75));
+var sun = new THREE.DirectionalLight(0xfff0d6, 1.55);
+sun.position.set(18, 30, 22);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+var sc = sun.shadow.camera; sc.left = -16; sc.right = 16; sc.top = 22; sc.bottom = -10; sc.near = 1; sc.far = 90;
+sun.shadow.bias = -0.0006;
+scene.add(sun);
+
+/* ---------- Кірпіш текстурасы (күйдірілген сары кірпіш) ---------- */
+function rnd(seed){ return function(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+function brickTextures(){
+  var W = 1024, Hh = 1024, rows = 16, cols = 6, rand = rnd(7);
+  var c = document.createElement('canvas'); c.width = W; c.height = Hh; var x = c.getContext('2d');
+  var b = document.createElement('canvas'); b.width = W; b.height = Hh; var y = b.getContext('2d');
+  x.fillStyle = '#8a6a4a'; x.fillRect(0, 0, W, Hh);      // ерітінді
+  y.fillStyle = '#000'; y.fillRect(0, 0, W, Hh);
+  var rh = Hh / rows, cw = W / cols, m = 5;
+  for(var r = 0; r < rows; r++){
+    var off = (r % 2) ? cw / 2 : 0;
+    for(var k = -1; k <= cols; k++){
+      var bx = k * cw + off, by = r * rh;
+      var t = rand(), l = 41 + t * 11;
+      var hue = 23 + rand() * 7, sat = 42 + rand() * 12;
+      x.fillStyle = 'hsl(' + hue + ',' + sat + '%,' + l + '%)';
+      x.fillRect(bx + m, by + m, cw - 2 * m, rh - 2 * m);
+      for(var s = 0; s < 40; s++){ x.fillStyle = 'rgba(' + (70 + rand() * 60 | 0) + ',' + (45 + rand() * 40 | 0) + ',30,' + (0.1 + rand() * 0.12) + ')'; x.fillRect(bx + m + rand() * (cw - 2 * m), by + m + rand() * (rh - 2 * m), 2 + rand() * 4, 2 + rand() * 3); }
+      y.fillStyle = 'rgb(' + (200 + rand() * 55 | 0) + ',' + (200 + rand() * 55 | 0) + ',' + (200 + rand() * 55 | 0) + ')';
+      y.fillRect(bx + m, by + m, cw - 2 * m, rh - 2 * m);
+    }
+  }
+  var map = new THREE.CanvasTexture(c), bump = new THREE.CanvasTexture(b);
+  [map, bump].forEach(function(t){ t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); });
+  map.encoding = THREE.sRGBEncoding;
+  return { map: map, bump: bump };
+}
+var BR = brickTextures();
+function brickMat(rx, ry){
+  var map = BR.map.clone(), bump = BR.bump.clone();
+  map.needsUpdate = bump.needsUpdate = true;
+  map.repeat.set(rx, ry); bump.repeat.set(rx, ry);
+  return new THREE.MeshStandardMaterial({ map: map, bumpMap: bump, bumpScale: 0.05, roughness: 0.92, metalness: 0 });
+}
+
+/* ---------- Мұнара пішіні (фото бойынша): төменнен жоғары қарай жіңішкереді,
+   жоғарғы үштен бірінде белдеу, үсті конус тәрізді күмбез, төбесі тегіс ---------- */
+var PROFILE = [
+  [0.00, 3.75], [2.0, 3.70], [4.0, 3.62], [6.0, 3.52], [8.0, 3.40], [10.0, 3.27], [11.1, 3.18],
+  [11.2, 3.27], [11.5, 3.27], [11.6, 3.15],                  // белдеу (шығыңқы белбеу)
+  [12.2, 3.0], [12.9, 2.72], [13.6, 2.32], [14.2, 1.9], [14.7, 1.5], [15.0, 1.3]
+];
+function rAt(h){
+  for(var i = 0; i < PROFILE.length - 1; i++){
+    var a = PROFILE[i], b = PROFILE[i + 1];
+    if(h <= b[0]){ var t = (h - a[0]) / (b[0] - a[0] || 1); return a[1] + (b[1] - a[1]) * t; }
+  }
+  return PROFILE[PROFILE.length - 1][1];
+}
+var tower = new THREE.Group(); scene.add(tower);
+var pts = [], TOPH = PROFILE[PROFILE.length - 1][0];
+for(var hh = 0; hh <= TOPH + 1e-6; hh += 0.05) pts.push(new THREE.Vector2(rAt(hh), hh));   // тең қадам: кірпіш созылмайды
+var body = new THREE.Mesh(new THREE.LatheGeometry(pts, 120), brickMat(14, 11));
+body.castShadow = true; body.receiveShadow = true; tower.add(body);
+// төбесі: тегіс қақпақ және ортасындағы шағын тесік
+var topR = PROFILE[PROFILE.length - 1][1], topY = PROFILE[PROFILE.length - 1][0];
+var lid = new THREE.Mesh(new THREE.RingGeometry(0.45, topR, 48), new THREE.MeshStandardMaterial({ color: 0x8e6747, roughness: 0.95, side: THREE.DoubleSide }));
+lid.rotation.x = -Math.PI / 2; lid.position.y = topY; tower.add(lid);
+var hole = new THREE.Mesh(new THREE.CircleGeometry(0.45, 32), new THREE.MeshBasicMaterial({ color: 0x2a1f16 }));
+hole.rotation.x = -Math.PI / 2; hole.position.y = topY - 0.02; tower.add(hole);
+
+// Қабырғаға жабысатын «жапсырма»: қисық бетті қайталайтын торлы пішін (есік, терезе)
+function wallPatch(inside, w, h, y0, ang, eps, mat, res){
+  var nx = Math.ceil(w / res), ny = Math.ceil(h / res), pos = [];
+  function P(x, y){ var yy = y0 + y, r = rAt(Math.max(0, yy)) + eps, a = ang + x / r; return [Math.sin(a) * r, yy, Math.cos(a) * r]; }
+  for(var i = 0; i < nx; i++) for(var j = 0; j < ny; j++){
+    var x0 = -w / 2 + i * res, y = j * res;
+    if(!inside(x0 + res / 2, y + res / 2)) continue;
+    var a = P(x0, y), b = P(x0 + res, y), c = P(x0 + res, y + res), d = P(x0, y + res);
+    pos.push.apply(pos, a.concat(b, c, a, c, d));
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  var m = new THREE.Mesh(g, mat); tower.add(m); return m;
+}
+// сүйір доғалы есік пішіні
+function lancet(hw, h, spring){
+  return function(x, y){
+    if(y < 0 || y > h) return false;
+    if(y <= spring) return Math.abs(x) <= hw;
+    var t = (y - spring) / (h - spring);
+    return Math.abs(x) <= hw * Math.pow(1 - Math.pow(t, 1.7), 0.62);
+  };
+}
+var DS = THREE.DoubleSide;
+// есік (оңтүстік беті), айналасында ашықтау кірпіш жиек
+wallPatch(lancet(0.72, 4.15, 2.05), 1.44, 4.15, 0, 0, 0.012, new THREE.MeshStandardMaterial({ color: 0x9a7150, roughness: 0.9, side: DS }), 0.025);
+wallPatch(lancet(0.52, 3.85, 1.95), 1.04, 3.85, 0, 0, 0.026, new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 1, side: DS }), 0.025);
+// белдеудің үстіндегі үшбұрышты терезе
+wallPatch(function(x, y){ return y >= 0 && y <= 0.62 && Math.abs(x) <= 0.32 * (1 - y / 0.62); }, 0.64, 0.62, 11.95, Math.PI * 0.12, 0.02, new THREE.MeshBasicMaterial({ color: 0x1c140e, side: DS }), 0.015);
+// жоғарғы жақтағы кішкене саңылау
+wallPatch(function(x, y){ return Math.abs(x) <= 0.14 && y >= 0 && y <= 0.36; }, 0.28, 0.36, 13.9, -Math.PI * 0.2, 0.02, new THREE.MeshBasicMaterial({ color: 0x1c140e, side: DS }), 0.02);
+
+/* ---------- Жер: тақыр, тұзды дала ---------- */
+function groundTex(){
+  var c = document.createElement('canvas'); c.width = c.height = 512; var x = c.getContext('2d'), rand = rnd(11);
+  x.fillStyle = '#cbb999'; x.fillRect(0, 0, 512, 512);
+  for(var i = 0; i < 14000; i++){ var v = 165 + rand() * 70 | 0; x.fillStyle = 'rgba(' + v + ',' + (v - 14) + ',' + (v - 40) + ',.28)'; x.fillRect(rand() * 512, rand() * 512, 2, 2); }
+  for(i = 0; i < 260; i++){ x.fillStyle = 'rgba(245,242,232,' + (0.15 + rand() * 0.2) + ')'; x.beginPath(); x.arc(rand() * 512, rand() * 512, 2 + rand() * 9, 0, 6.28); x.fill(); }
+  x.strokeStyle = 'rgba(120,100,72,.25)'; x.lineWidth = 1;
+  for(i = 0; i < 90; i++){ var px = rand() * 512, py = rand() * 512; x.beginPath(); x.moveTo(px, py); for(var s = 0; s < 4; s++){ px += (rand() - .5) * 50; py += (rand() - .5) * 50; x.lineTo(px, py); } x.stroke(); }
+  var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(26, 26); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t;
+}
+var ground = new THREE.Mesh(new THREE.CircleGeometry(220, 72), new THREE.MeshStandardMaterial({ map: groundTex(), roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// дала өсімдіктері (шағын бұталар)
+var tuftGeo = new THREE.IcosahedronGeometry(0.22, 0), tuftMat = new THREE.MeshStandardMaterial({ color: 0x8c8a5c, roughness: 1, flatShading: true });
+var tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, 140), dm = new THREE.Object3D(), rr = rnd(5);
+for(var i = 0; i < 140; i++){
+  var a = rr() * Math.PI * 2, d = 9 + rr() * 45;
+  dm.position.set(Math.sin(a) * d, 0.05, Math.cos(a) * d); dm.scale.set(1 + rr(), 0.5 + rr() * 0.6, 1 + rr()); dm.rotation.y = rr() * 6; dm.updateMatrix();
+  tufts.setMatrixAt(i, dm.matrix);
+}
+tufts.castShadow = true; scene.add(tufts);
+
+/* ---------- Темір қоршау ---------- */
+var FEN = 7.4, fenceH = 1.15, ironMat = new THREE.MeshStandardMaterial({ color: 0x2d2c2a, roughness: 0.6, metalness: 0.5 });
+var fence = new THREE.Group(); scene.add(fence);
+var bars = [];
+function side(x0, z0, x1, z1){
+  var len = Math.hypot(x1 - x0, z1 - z0), n = Math.round(len / 0.16), ang = Math.atan2(x1 - x0, z1 - z0);
+  for(var k = 0; k < n; k++){ var t = k / n; bars.push([x0 + (x1 - x0) * t, z0 + (z1 - z0) * t]); }
+  [0.12, fenceH - 0.05].forEach(function(hy){
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, len), ironMat);
+    rail.position.set((x0 + x1) / 2, hy, (z0 + z1) / 2); rail.rotation.y = ang; rail.castShadow = true; fence.add(rail);
+  });
+  for(k = 0; k <= Math.round(len / 2.2); k++){
+    var t2 = k / Math.round(len / 2.2), post = new THREE.Mesh(new THREE.BoxGeometry(0.08, fenceH + 0.12, 0.08), ironMat);
+    post.position.set(x0 + (x1 - x0) * t2, (fenceH + 0.12) / 2, z0 + (z1 - z0) * t2); post.castShadow = true; fence.add(post);
+  }
+}
+side(-FEN, FEN, FEN, FEN); side(FEN, FEN, FEN, -FEN); side(FEN, -FEN, -FEN, -FEN); side(-FEN, -FEN, -FEN, FEN);
+var barGeo = new THREE.CylinderGeometry(0.012, 0.012, fenceH, 5);
+var barMesh = new THREE.InstancedMesh(barGeo, ironMat, bars.length);
+bars.forEach(function(p, k){ dm.position.set(p[0], fenceH / 2, p[1]); dm.scale.set(1, 1, 1); dm.rotation.set(0, 0, 0); dm.updateMatrix(); barMesh.setMatrixAt(k, dm.matrix); });
+barMesh.castShadow = true; fence.add(barMesh);
+
+/* ---------- Ақпараттық тақта мен кірпіш тұғыр ---------- */
+var plaque = new THREE.Group(); scene.add(plaque);
+var board = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.75, 0.05), new THREE.MeshStandardMaterial({ color: 0x2b3036, roughness: 0.5, metalness: 0.4 }));
+board.position.y = 1.35; board.castShadow = true; plaque.add(board);
+var face = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 0.6), new THREE.MeshStandardMaterial({ color: 0x8f9aa3, roughness: 0.4, metalness: 0.6 }));
+face.position.set(0, 1.35, 0.027); plaque.add(face);
+[-0.4, 0.4].forEach(function(px){ var leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.0, 0.05), ironMat); leg.position.set(px, 0.5, -0.01); leg.castShadow = true; plaque.add(leg); });
+plaque.position.set(0, 0, FEN + 0.9);
+var ped = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.6), brickMat(1.2, 0.7));
+ped.position.set(0.15, 0.225, FEN + 1.9); ped.castShadow = ped.receiveShadow = true; scene.add(ped);
+
+/* ---------- Камера және басқару ---------- */
+var HOME = { az: 0.42, pol: 1.3, dist: 40 }, orb = { az: HOME.az, pol: HOME.pol, dist: HOME.dist };
+var target = new THREE.Vector3(0, 6.6, 0), spin = !reduce, homing = null;
+if(reduce) $('bSpin').setAttribute('aria-pressed', 'false');
+function placeCam(){
+  var sp = Math.sin(orb.pol);
+  camera.position.set(target.x + orb.dist * sp * Math.sin(orb.az), Math.max(0.6, target.y + orb.dist * Math.cos(orb.pol)), target.z + orb.dist * sp * Math.cos(orb.az));
+  camera.lookAt(target);
+}
+var ptrs = new Map(), pinch0 = 0, lastInput = 0;
+canvas.addEventListener('pointerdown', function(e){ canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if(ptrs.size === 2){ var a = Array.from(ptrs.values()); pinch0 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); } lastInput = performance.now(); homing = null; });
+canvas.addEventListener('pointermove', function(e){
+  var p = ptrs.get(e.pointerId); if(!p) return;
+  var dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; lastInput = performance.now();
+  if(ptrs.size === 1){ orb.az -= dx * 0.006; orb.pol = Math.max(0.3, Math.min(1.55, orb.pol - dy * 0.005)); }
+  else if(ptrs.size === 2){ var a = Array.from(ptrs.values()), d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); if(pinch0 > 0) orb.dist = Math.max(14, Math.min(110, orb.dist * pinch0 / d)); pinch0 = d; }
+});
+function endPtr(e){ ptrs.delete(e.pointerId); if(ptrs.size < 2) pinch0 = 0; }
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', function(e){ e.preventDefault(); orb.dist = Math.max(14, Math.min(110, orb.dist * (e.deltaY > 0 ? 1.08 : 0.93))); lastInput = performance.now(); }, { passive: false });
+$('bSpin').onclick = function(){ spin = !spin; this.setAttribute('aria-pressed', spin); };
+$('bReset').onclick = function(){ homing = { t: 0, from: { az: orb.az, pol: orb.pol, dist: orb.dist } }; };
+$('bFs').onclick = function(){ try { if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function(){}); } catch(_){} };
+
+var W = 0, Hh = 0, last = performance.now();
+function size(){ var w = stage.clientWidth, h = stage.clientHeight; if((w === W && h === Hh) || !w || !h) return; W = w; Hh = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+function frame(now){
+  requestAnimationFrame(frame);
+  var dt = Math.min(0.05, (now - last) / 1000); last = now;
+  size();
+  if(homing){
+    homing.t = Math.min(1, homing.t + dt / 0.9); var k = 1 - Math.pow(1 - homing.t, 3), f = homing.from;
+    var daz = ((HOME.az - f.az) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+    orb.az = f.az + daz * k; orb.pol = f.pol + (HOME.pol - f.pol) * k; orb.dist = f.dist + (HOME.dist - f.dist) * k;
+    if(homing.t >= 1) homing = null;
+  } else if(spin && ptrs.size === 0 && now - lastInput > 2500) orb.az += dt * 0.15;
+  placeCam();
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
