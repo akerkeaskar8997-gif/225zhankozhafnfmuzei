@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Құмыра</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: museum vitrine. 3D stage on the left, one instrument panel on the right, tabs on top. */
+  color-scheme: dark;
+  --glass:#18212b;      /* vitrine background */
+  --glass-2:#0f161d;
+  --panel:#222d39;
+  --panel-2:#2b3846;
+  --line:#3b4a5a;
+  --ink:#ece7dc;
+  --muted:#a3b3c1;
+  --clay:#e08f62;       /* data about fired clay, primary accent */
+  --water:#62b0e0;      /* water, glass series */
+  --ok:#8fd19e;
+  --font-display:"Noto Serif", Georgia, "Times New Roman", serif;
+  --font-body:"Noto Sans", "Segoe UI", Roboto, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--glass-2);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;min-height:0}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;gap:0}
+h1{font-family:var(--font-display);font-size:22px;margin:0;line-height:1.15;text-wrap:balance}
+.brand span{color:var(--muted);font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{font:600 15px var(--font-body);color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;min-height:44px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--clay);border-color:var(--clay);color:#1b1410}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 390px;min-height:0}
+.stage{position:relative;min-height:0;overflow:hidden;background:radial-gradient(ellipse at 50% 35%, #2a3847 0%, var(--glass) 55%, var(--glass-2) 100%)}
+#c3d{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c3d:active{cursor:grabbing}
+.chartwrap{position:absolute;inset:0;display:none}
+#chart{display:block}
+.hint{position:absolute;left:16px;bottom:12px;color:var(--muted);font-size:13px;pointer-events:none}
+.badge{position:absolute;left:16px;top:12px;background:rgba(15,22,29,.72);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:14px;font-weight:600}
+.dim{position:absolute;transform:translate(-50%,-50%);background:rgba(15,22,29,.82);border:1px solid var(--ink);border-radius:6px;padding:3px 8px;font-size:14px;font-weight:600;white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.panel section{display:none;flex-direction:column;gap:14px}
+.panel section.on{display:flex}
+h2{font-family:var(--font-display);font-size:19px;margin:0;text-wrap:balance}
+p{margin:0}
+.note{color:var(--muted);font-size:14px}
+.box{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg button,.btn{font:600 15px var(--font-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:44px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#18212b;border-color:var(--ink)}
+.btn.primary{background:var(--clay);border-color:var(--clay);color:#1b1410}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+label.sl{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:15px}
+label.sl span.v{color:var(--clay);font-variant-numeric:tabular-nums}
+label.sl .top{display:flex;justify-content:space-between;gap:10px}
+input[type=range]{width:100%;height:32px;accent-color:var(--clay)}
+label.ck{display:flex;align-items:center;gap:10px;min-height:40px;font-size:15px;cursor:pointer}
+label.ck input{width:22px;height:22px;accent-color:var(--clay);flex:none}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:15px}
+dt{color:var(--muted)}
+dd{margin:0;font-weight:600}
+.big{font-family:var(--font-display);font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums}
+.big small{font:500 15px var(--font-body);color:var(--muted)}
+.formula{font-family:var(--font-display);font-size:17px;background:var(--glass);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:nowrap}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 4px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:13px}
+td input{width:70px;font:500 15px var(--font-body);color:var(--ink);background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:6px}
+td.out{font-weight:700;color:var(--clay)}
+select{font:500 15px var(--font-body);color:var(--ink);background:var(--glass);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px;width:100%}
+.prog{height:12px;background:var(--glass);border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.credit{margin-top:auto;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:10px}
+.fail{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--ink)}
+@media (max-width:860px){
+  html,body{height:auto}
+  .app{height:auto}
+  main{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:340px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){.prog i{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <h1>Құмыра</h1>
+    <span>3D модель және виртуалды зертхана</span>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Бөлімдер">
+    <button role="tab" id="tab-model" data-tab="model" aria-selected="true">3D модель</button>
+    <button role="tab" id="tab-restore" data-tab="restore" aria-selected="false">Реставрация</button>
+    <button role="tab" id="tab-volume" data-tab="volume" aria-selected="false">Сыйымдылық</button>
+    <button role="tab" id="tab-fire" data-tab="fire" aria-selected="false">Күйдіру</button>
+    <button role="tab" id="tab-absorb" data-tab="absorb" aria-selected="false">Су сіңіру</button>
+    <button role="tab" id="tab-heat" data-tab="heat" aria-selected="false">Жылу алмасу</button>
+  </div>
+</header>
+<main>
+  <div class="stage" id="stage">
+    <canvas id="c3d" aria-label="Құмыраның 3D моделі"></canvas>
+    <div class="chartwrap" id="chartwrap"><canvas id="chart" aria-label="Диаграмма"></canvas></div>
+    <div class="badge" id="badge">Мұражайдағы күйі</div>
+    <div class="dim" id="dimH">Биіктігі 70 см</div>
+    <div class="dim" id="dimD">Диаметрі 74 см</div>
+    <div class="dim" id="dimW">Қабырғасы 3 см</div>
+    <div class="hint" id="hint">Айналдыру: сүйреу. Үлкейту: дөңгелекше немесе екі саусақ.</div>
+    <div class="fail" id="fail">3D көрініс ашылмады. Интернет байланысын тексеріп, бетті қайта жүктеңіз.</div>
+  </div>
+
+  <aside class="panel">
+    <section data-panel="model" class="on">
+      <h2>Жәдігердің моделі</h2>
+      <div class="seg">
+        <button id="stMuseum" aria-pressed="true">Мұражайдағы күйі</button>
+        <button id="stRecon" aria-pressed="false">Қалпына келтірілген</button>
+      </div>
+      <div class="box">
+        <label class="sl" for="explode"><span class="top">Сынықтарды ажырату <span class="v" id="explodeV">0%</span></span>
+          <input type="range" id="explode" min="0" max="100" value="0"></label>
+        <label class="ck" for="section"><input type="checkbox" id="section">Қима: қабырға қалыңдығын көрсету</label>
+        <label class="ck" for="dims"><input type="checkbox" id="dims" checked>Өлшемдерді көрсету</label>
+        <label class="ck" for="spin"><input type="checkbox" id="spin" checked>Автоматты айналу</label>
+      </div>
+      <div class="box">
+        <dl>
+          <dt>Материалы</dt><dd>қыш (күйдірілген саз)</dd>
+          <dt>Күйі</dt><dd>жартылай сынық</dd>
+          <dt>Биіктігі</dt><dd>70 см</dd>
+          <dt>Диаметрі</dt><dd>74 см</dd>
+          <dt>Қабырғасы</dt><dd>3 см</dd>
+          <dt>Ауыз жиегі</dt><dd>тырнақты өрнек</dd>
+          <dt>Қолданысы</dt><dd>су немесе астық сақтау</dd>
+          <dt>Тұрған жері</dt><dd>мектеп мұражайы</dd>
+        </dl>
+      </div>
+      <p class="note">Ақшыл түсті бөліктер сақталмаған, оларды модель болжаммен толықтырады. Пішін фото мен үш өлшем бойынша шамамен салынған.</p>
+    </section>
+
+    <section data-panel="restore">
+      <h2>Реставратор шеберханасы</h2>
+      <p>Сынықтар үстелде шашылып жатыр. Сынықты бассаңыз, ол өз орнына барады. Құмыраны толық жинаңыз.</p>
+      <div class="box">
+        <div class="big"><span id="placed">0</span> / <span id="total">0</span> <small>сынық орнында</small></div>
+        <div class="prog"><i id="prog"></i></div>
+        <p id="restoreMsg" class="note">Төменгі сынықтардан бастаған ыңғайлы.</p>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="scatter">Қайта шашу</button>
+        <button class="btn" id="autoBuild">Автоматты жинау</button>
+      </div>
+      <p class="note">Нағыз реставрацияда да сынықтар алдымен сұрыпталып, түбінен бастап жоғары қарай желімделеді.</p>
+    </section>
+
+    <section data-panel="volume">
+      <h2>Сыйымдылықты есептеу</h2>
+      <div class="box">
+        <label class="sl" for="level"><span class="top">Су деңгейі <span class="v" id="levelV">35 см</span></span>
+          <input type="range" id="level" min="3" max="68" step="0.5" value="35"></label>
+        <div class="big"><span id="liters">0</span> <small>литр</small></div>
+      </div>
+      <div class="formula">V = π · ∫ r(h)² dh</div>
+      <p class="note" id="volNote"></p>
+    </section>
+
+    <section data-panel="fire">
+      <h2>Сазды күйдіру моделі</h2>
+      <div class="box">
+        <label class="sl" for="temp"><span class="top">Температура <span class="v" id="tempV">20 °C</span></span>
+          <input type="range" id="temp" min="20" max="1000" step="10" value="20"></label>
+        <label class="sl" for="atmo">Күйдіру ортасы
+          <select id="atmo">
+            <option value="ox">Тотықтырғыш орта (ауа жеткілікті)</option>
+            <option value="red">Тотықсыздандырғыш орта (ауа аз, түтінді)</option>
+          </select></label>
+      </div>
+      <div class="box"><p id="fireStage"></p></div>
+      <div class="formula">Al₂Si₂O₅(OH)₄ → Al₂Si₂O₇ + 2H₂O↑</div>
+      <p class="note">Кезең шекаралары жалпы модель. Бұл құмыраның құрамы мен нақты күйдіру температурасын тек арнайы талдау (XRF, XRD) көрсете алады.</p>
+    </section>
+
+    <section data-panel="absorb">
+      <h2>Су сіңіру тәжірибесі</h2>
+      <div class="formula">W = (m<sub>ылғал</sub> − m<sub>құрғақ</sub>) / m<sub>құрғақ</sub> × 100%</div>
+      <div class="tw"><table>
+        <thead><tr><th>Үлгі</th><th>Құрғақ, г</th><th>Уақыт, мин</th><th>Ылғал, г</th><th>W, %</th></tr></thead>
+        <tbody id="absBody"></tbody>
+      </table></div>
+      <div class="row"><button class="btn" id="absModel">Модель бойынша толтыру</button></div>
+      <p class="note" id="absNote"></p>
+      <p class="note">Тәжірибе тек заманауи қыш үлгілерінде жүргізіледі. Тарихи жәдігерді суға салуға болмайды.</p>
+    </section>
+
+    <section data-panel="heat">
+      <h2>Жылу алмасуды салыстыру</h2>
+      <div class="box">
+        <label class="sl" for="t0"><span class="top">Судың бастапқы температурасы <span class="v" id="t0V">70 °C</span></span>
+          <input type="range" id="t0" min="40" max="90" value="70"></label>
+        <label class="sl" for="tr"><span class="top">Бөлме температурасы <span class="v" id="trV">22 °C</span></span>
+          <input type="range" id="tr" min="10" max="30" value="22"></label>
+        <label class="sl" for="dc"><span class="top">Қыш ыдыстың қабырғасы <span class="v" id="dcV">8 мм</span></span>
+          <input type="range" id="dc" min="3" max="30" value="8"></label>
+        <label class="sl" for="dg"><span class="top">Шыны ыдыстың қабырғасы <span class="v" id="dgV">4 мм</span></span>
+          <input type="range" id="dg" min="2" max="10" value="4"></label>
+        <label class="ck" for="evap"><input type="checkbox" id="evap">Қыш қабырғасы ылғал: сырт бетінен булану бар</label>
+      </div>
+      <p id="heatOut"></p>
+      <div class="tw"><table>
+        <thead><tr><th>Уақыт, мин</th><th>Қыш, °C</th><th>Шыны, °C</th></tr></thead>
+        <tbody id="heatBody"></tbody>
+      </table></div>
+      <p class="note">Кестеге өз өлшемдеріңізді жазсаңыз, олар графикке нүкте болып түседі. Сызықтар 0,5 л суға арналған Ньютонның салқындау заңы бойынша есептелген, ыдыстың өз жылу сыйымдылығы ескерілмеген.</p>
+    </section>
+
+  </aside>
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+//<pure>
+var H=70, WALL=3, NT=180, NY=46, TAU=Math.PI*2;
+var CP=[[0,21],[4,24.6],[12,29],[24,33.4],[36,36.1],[46,37],[56,36.5],[63,35.2],[67,34.7],[70,35.6]];
+function ro(y){
+  y=Math.max(0,Math.min(H,y));
+  var k=0; while(k<CP.length-2 && y>CP[k+1][0]) k++;
+  function m(a,b){return (CP[b][1]-CP[a][1])/(CP[b][0]-CP[a][0]);}
+  var y0=CP[k][0], r0=CP[k][1], y1=CP[k+1][0], r1=CP[k+1][1];
+  var t0=k>0?m(k-1,k+1):m(k,k+1), t1=k<CP.length-2?m(k,k+2):m(k,k+1);
+  var h=y1-y0, t=(y-y0)/h, t2=t*t, t3=t2*t;
+  return (2*t3-3*t2+1)*r0+(t3-2*t2+t)*h*t0+(-2*t3+3*t2)*r1+(t3-t2)*h*t1;
+}
+function ri(y){return ro(Math.max(y,WALL))-WALL;}
+function volTo(h){ // litres of water up to level h (cm)
+  var v=0, dy=0.1;
+  for(var y=WALL;y<h-1e-9;y+=dy){var r=ri(y+dy/2); v+=Math.PI*r*r*Math.min(dy,h-y);}
+  return v/1000;
+}
+function levelFor(L){var lo=WALL,hi=H; for(var i=0;i<40;i++){var mid=(lo+hi)/2; if(volTo(mid)<L) lo=mid; else hi=mid;} return (lo+hi)/2;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hash(a,b){var h=Math.imul(a,374761393)+Math.imul(b,668265263)|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967295;}
+function sm(t){return t*t*(3-2*t);}
+function sstep(a,b,x){var t=Math.max(0,Math.min(1,(x-a)/(b-a)));return sm(t);}
+function vn(u,v,P,seed){
+  var iu=Math.floor(u), iv=Math.floor(v), fu=sm(u-iu), fv=sm(v-iv);
+  function g(x,y){return hash(((x%P)+P)%P+seed*57, y+seed*131);}
+  var a=g(iu,iv), b=g(iu+1,iv), c=g(iu,iv+1), d=g(iu+1,iv+1);
+  return (a+(b-a)*fu)*(1-fv)+(c+(d-c)*fu)*fv;
+}
+function hex(h){return [((h>>16)&255)/255,((h>>8)&255)/255,(h&255)/255];}
+function mix(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];}
+var C_SLIP=hex(0xa9ab90), C_TERRA=hex(0xb56c4d), C_PLASTER=hex(0x9d9d8f), C_IN=hex(0x643e31), C_EDGE=hex(0xa2573c);
+
+function buildShardData(){
+  var NV=(NY+1)*NT, OP=new Float32Array(NV*3), IP=new Float32Array(NV*3), ON=new Float32Array(NV*3), IN=new Float32Array(NV*3);
+  var OC=new Float32Array(NV*3), IC=new Float32Array(NV*3);
+  function vid(i,j){return j*NT+((i%NT)+NT)%NT;}
+  var i,j,k;
+  for(j=0;j<=NY;j++) for(i=0;i<NT;i++){
+    var th=i/NT*TAU, y=j/NY*H, u=i/NT;
+    var w=sstep(60.5,62.5,y)*(1-sstep(66.5,68.5,y));
+    var ridge=Math.pow(0.5+0.5*Math.cos(th*30),1.5);
+    var rough=j===0?0:(vn(u*40,y/3,40,5)-0.5)*0.5;
+    var r=ro(y)+rough+1.0*w*ridge;
+    var v=vid(i,j)*3;
+    OP[v]=r*Math.cos(th); OP[v+1]=y; OP[v+2]=r*Math.sin(th);
+    var yi=Math.max(y,WALL), r2=ri(yi)+(vn(u*40,y/3,40,9)-0.5)*0.4;
+    IP[v]=r2*Math.cos(th); IP[v+1]=yi; IP[v+2]=r2*Math.sin(th);
+    var n=0.65*vn(u*9,y/9,9,1)+0.35*vn(u*27,y/3.5,27,2);
+    var br=0.9+0.2*vn(u*90,y/1.2,90,3);
+    var col=(y<15.5+1.2*Math.sin(th*3))?C_PLASTER:mix(C_SLIP,C_TERRA,sstep(0.50,0.58,n));
+    OC[v]=col[0]*br; OC[v+1]=col[1]*br; OC[v+2]=col[2]*br;
+    IC[v]=C_IN[0]*br; IC[v+1]=C_IN[1]*br; IC[v+2]=C_IN[2]*br;
+  }
+  function normals(P,N,sign){
+    for(var j=0;j<=NY;j++) for(var i=0;i<NT;i++){
+      var a=vid(i+1,j)*3,b=vid(i-1,j)*3,c=vid(i,Math.min(j+1,NY))*3,d=vid(i,Math.max(j-1,0))*3;
+      var ax=P[a]-P[b],ay=P[a+1]-P[b+1],az=P[a+2]-P[b+2], bx=P[c]-P[d],by=P[c+1]-P[d+1],bz=P[c+2]-P[d+2];
+      var nx=ay*bz-az*by, ny=az*bx-ax*bz, nz=ax*by-ay*bx, l=Math.sqrt(nx*nx+ny*ny+nz*nz);
+      var th=i/NT*TAU, rx=Math.cos(th)*sign, rz=Math.sin(th)*sign;
+      if(l<1e-6){nx=rx;ny=0;nz=rz;} else {nx/=l;ny/=l;nz/=l; if(nx*rx+nz*rz<0){nx=-nx;ny=-ny;nz=-nz;}}
+      var v=vid(i,j)*3; N[v]=nx;N[v+1]=ny;N[v+2]=nz;
+    }
+  }
+  normals(OP,ON,1); normals(IP,IN,-1);
+
+  var rnd=mulberry32(7), seeds=[];
+  var bands=[[3,16,4],[16,31,6],[31,46,7],[46,59,7],[61,70,6]];
+  for(var b=0;b<bands.length;b++){
+    var n2=bands[b][2], off=rnd()*TAU;
+    for(k=0;k<n2;k++) seeds.push({th:((k+0.2+0.6*rnd())/n2*TAU+off)%TAU, y:bands[b][0]+rnd()*(bands[b][1]-bands[b][0]),
+      missing:b===4||(b===3&&k===2), rimFound:b===4&&k<2, pos:[],nor:[],col:[]});
+  }
+  function nearest(th,y){
+    var best=0,bd=1e9;
+    for(var s=0;s<seeds.length;s++){var d=Math.abs(th-seeds[s].th); if(d>Math.PI)d=TAU-d; d*=34; var e=y-seeds[s].y, q=d*d+e*e; if(q<bd){bd=q;best=s;}}
+    return best;
+  }
+  function P3(A,v){return [A[v*3],A[v*3+1],A[v*3+2]];}
+  function addTri(S,P,N,C,want){
+    var a=P[0],b=P[1],c=P[2];
+    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    var gx=uy*vz-uz*vy, gy=uz*vx-ux*vz, gz=ux*vy-uy*vx;
+    var o=[0,1,2];
+    if(gx*want[0]+gy*want[1]+gz*want[2]<0){o=[0,2,1];gx=-gx;gy=-gy;gz=-gz;}
+    var l=Math.sqrt(gx*gx+gy*gy+gz*gz)||1;
+    for(var q=0;q<3;q++){
+      var p=P[o[q]], n=N?N[o[q]]:[gx/l,gy/l,gz/l], cc=C[o[q]];
+      S.pos.push(p[0],p[1],p[2]); S.nor.push(n[0],n[1],n[2]); S.col.push(cc[0],cc[1],cc[2]);
+    }
+  }
+  // pass 1: assign triangles
+  var tris=[], edges=new Map();
+  function ekey(a,b){return a<b?a*100000+b:b*100000+a;}
+  for(j=0;j<NY;j++) for(i=0;i<NT;i++){
+    var A=[i,j],B=[i+1,j],Cc=[i+1,j+1],D=[i,j+1];
+    var pair=((i+j)&1)?[[A,B,Cc],[A,Cc,D]]:[[A,B,D],[B,Cc,D]];
+    for(k=0;k<2;k++){
+      var t=pair[k], ci=(t[0][0]+t[1][0]+t[2][0])/3, cj=(t[0][1]+t[1][1]+t[2][1])/3;
+      var s=nearest((ci/NT*TAU)%TAU, cj/NY*H);
+      var vs=[vid(t[0][0],t[0][1]),vid(t[1][0],t[1][1]),vid(t[2][0],t[2][1])];
+      tris.push({s:s,v:vs,th:ci/NT*TAU});
+      for(var e=0;e<3;e++){var key=ekey(vs[e],vs[(e+1)%3]); var arr=edges.get(key); if(!arr){arr=[];edges.set(key,arr);} arr.push(s);}
+    }
+  }
+  // pass 2: emit geometry
+  for(k=0;k<tris.length;k++){
+    var T=tris[k], S=seeds[T.s], v0=T.v[0],v1=T.v[1],v2=T.v[2];
+    var rad=[Math.cos(T.th),0,Math.sin(T.th)];
+    addTri(S,[P3(OP,v0),P3(OP,v1),P3(OP,v2)],[P3(ON,v0),P3(ON,v1),P3(ON,v2)],[P3(OC,v0),P3(OC,v1),P3(OC,v2)],rad);
+    addTri(S,[P3(IP,v0),P3(IP,v1),P3(IP,v2)],[P3(IN,v0),P3(IN,v1),P3(IN,v2)],[P3(IC,v0),P3(IC,v1),P3(IC,v2)],[-rad[0],0,-rad[2]]);
+    for(var e2=0;e2<3;e2++){
+      var a2=T.v[e2], b2=T.v[(e2+1)%3], c2=T.v[(e2+2)%3], arr2=edges.get(ekey(a2,b2));
+      var other=arr2.length<2?-1:(arr2[0]===T.s?arr2[1]:arr2[0]);
+      if(arr2.length>=2 && arr2[0]===T.s && arr2[1]===T.s) continue;
+      if(other===T.s) continue;
+      var o1=P3(OP,a2), o2=P3(OP,b2), i1=P3(IP,a2), i2=P3(IP,b2), o3=P3(OP,c2);
+      var want=[(o1[0]+o2[0])/2-o3[0],(o1[1]+o2[1])/2-o3[1],(o1[2]+o2[2])/2-o3[2]];
+      var sh=0.85+0.3*hash(a2,b2), ce=[C_EDGE[0]*sh,C_EDGE[1]*sh,C_EDGE[2]*sh];
+      addTri(S,[o1,o2,i2],null,[ce,ce,ce],want);
+      addTri(S,[o1,i2,i1],null,[ce,ce,ce],want);
+    }
+  }
+  var out=[];
+  for(k=0;k<seeds.length;k++){
+    var Sd=seeds[k], n3=Sd.pos.length/3; if(!n3) continue;
+    var cx=0,cy=0,cz=0;
+    for(i=0;i<n3;i++){cx+=Sd.pos[i*3];cy+=Sd.pos[i*3+1];cz+=Sd.pos[i*3+2];}
+    cx/=n3;cy/=n3;cz/=n3;
+    for(i=0;i<n3;i++){Sd.pos[i*3]=(Sd.pos[i*3]-cx)*0.988;Sd.pos[i*3+1]=(Sd.pos[i*3+1]-cy)*0.988;Sd.pos[i*3+2]=(Sd.pos[i*3+2]-cz)*0.988;}
+    var dl=Math.sqrt(cx*cx+cz*cz)||1;
+    out.push({pos:Sd.pos,nor:Sd.nor,col:Sd.col,c:[cx,cy,cz],dir:[cx/dl,0,cz/dl],y:Sd.y,th:Sd.th,missing:Sd.missing,rimFound:Sd.rimFound});
+  }
+  return out;
+}
+// heat model: 0.5 l of water, Newton cooling
+function heatK(dmm,lambda,evap){
+  var hOut=10, A=0.035, U=1/(1/hOut+(dmm/1000)/lambda), top=25*0.005;
+  return (U*A*(evap?1.3:1)+top)/(0.5*4186);
+}
+function heatT(T0,Tr,k,min){return Tr+(T0-Tr)*Math.exp(-k*min*60);}
+var ABS_MODEL=[9,13,17];
+function absWet(dry,min,idx){return dry*(1+ABS_MODEL[idx]/100*(1-Math.exp(-min/12)));}
+//</pure>
+if(typeof document==='undefined'){ if(typeof module!=='undefined') module.exports={ro:ro,ri:ri,volTo:volTo,levelFor:levelFor,buildShardData:buildShardData,heatK:heatK,heatT:heatT,absWet:absWet}; return; }
+
+function $(id){return document.getElementById(id);}
+var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var st={tab:'model',recon:false,explode:0,section:false,dims:true,spin:!reduce};
+if(reduce) $('spin').checked=false;
+var INK='#ece7dc', MUTED='#a3b3c1', LINE='#3b4a5a', CLAY='#e08f62', WATER='#62b0e0';
+
+/* ---------- 2D charts and tables (work even without 3D) ---------- */
+function prepChart(){
+  var c=$('chart'), wrap=$('chartwrap'), d=Math.min(window.devicePixelRatio||1,2);
+  var w=Math.max(280,wrap.clientWidth), h=Math.max(240,wrap.clientHeight);
+  c.width=Math.round(w*d); c.height=Math.round(h*d); c.style.width=w+'px'; c.style.height=h+'px';
+  var x=c.getContext('2d'); x.setTransform(d,0,0,d,0,0); x.clearRect(0,0,w,h);
+  x.font='500 14px "Noto Sans", sans-serif'; x.textBaseline='middle';
+  return {x:x,w:w,h:h};
+}
+var absRows=[{dry:120,min:30,wet:0},{dry:150,min:30,wet:0},{dry:95,min:30,wet:0}], absIsModel=true;
+function absFill(){absRows.forEach(function(r,i){r.wet=Math.round(absWet(r.dry,r.min,i)*10)/10;});absIsModel=true;}
+function absW(r){return r.dry>0&&r.wet>0?(r.wet-r.dry)/r.dry*100:NaN;}
+function absRender(full){
+  var tb=$('absBody');
+  if(full){
+    tb.innerHTML='';
+    absRows.forEach(function(r,i){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td>Қыш '+(i+1)+'</td>'+
+        '<td><input type="number" id="absDry'+i+'" step="0.1" min="0" value="'+r.dry+'" aria-label="Құрғақ масса, үлгі '+(i+1)+'"></td>'+
+        '<td><input type="number" id="absMin'+i+'" step="1" min="0" value="'+r.min+'" aria-label="Суға ұстау уақыты, үлгі '+(i+1)+'"></td>'+
+        '<td><input type="number" id="absWet'+i+'" step="0.1" min="0" value="'+r.wet+'" aria-label="Ылғал масса, үлгі '+(i+1)+'"></td>'+
+        '<td class="out" id="absOut'+i+'"></td>';
+      tb.appendChild(tr);
+      ['Dry','Min','Wet'].forEach(function(f){
+        $('abs'+f+i).addEventListener('input',function(ev){
+          var v=parseFloat(ev.target.value); r[f.toLowerCase()]=isFinite(v)?v:0;
+          if(f==='Wet') absIsModel=false;
+          absRender(false);
+        });
+      });
+    });
+  }
+  absRows.forEach(function(r,i){var w=absW(r); $('absOut'+i).textContent=isFinite(w)?w.toFixed(1):'–';});
+  $('absNote').textContent=absIsModel?'Кестеде модельдік мәндер тұр. Өз өлшемдеріңізді «Ылғал, г» бағанына жазыңыз.':'Есеп сіз енгізген өлшемдер бойынша жүргізілді.';
+  if(st.tab==='absorb') drawAbs();
+}
+function drawAbs(){
+  var p=prepChart(), x=p.x, L=64,R=24,T=64,B=56, pw=p.w-L-R, ph=p.h-T-B;
+  var vals=absRows.map(absW), mx=0; vals.forEach(function(v){if(isFinite(v)&&v>mx)mx=v;});
+  var top=Math.max(10,Math.ceil(mx/5)*5), stepY=top<=20?5:10;
+  x.fillStyle=INK; x.font='700 18px "Noto Serif", serif'; x.textAlign='left';
+  x.fillText('Үлгілердің су сіңіруі, %',L,28);
+  x.font='500 13px "Noto Sans", sans-serif'; x.fillStyle=MUTED;
+  x.fillText(absIsModel?'модельдік мәндер':'енгізілген өлшемдер бойынша',L,48);
+  x.font='500 14px "Noto Sans", sans-serif';
+  for(var v=0;v<=top;v+=stepY){
+    var yy=T+ph-ph*v/top;
+    x.strokeStyle=LINE; x.lineWidth=1; x.beginPath(); x.moveTo(L,yy); x.lineTo(L+pw,yy); x.stroke();
+    x.fillStyle=MUTED; x.textAlign='right'; x.fillText(v,L-8,yy);
+  }
+  var bw=Math.min(110,pw/3*0.55);
+  vals.forEach(function(v,i){
+    var cx=L+pw*(i+0.5)/3;
+    x.fillStyle=INK; x.textAlign='center'; x.fillText('Қыш үлгісі '+(i+1),cx,T+ph+20);
+    x.fillStyle=MUTED; x.fillText(absRows[i].min+' мин суда',cx,T+ph+40);
+    if(!isFinite(v)||v<0) return;
+    var bh=ph*Math.min(v,top)/top;
+    x.fillStyle=CLAY; x.fillRect(cx-bw/2,T+ph-bh,bw,bh);
+    x.fillStyle=INK; x.font='700 16px "Noto Sans", sans-serif'; x.fillText(v.toFixed(1)+'%',cx,T+ph-bh-12);
+    x.font='500 14px "Noto Sans", sans-serif';
+  });
+}
+var HT=[0,10,20,30,40,50,60], heatOwn=HT.map(function(){return [NaN,NaN];});
+function heatParams(){return {T0:+$('t0').value,Tr:+$('tr').value,dc:+$('dc').value,dg:+$('dg').value,evap:$('evap').checked};}
+function heatRender(){
+  var q=heatParams();
+  $('t0V').textContent=q.T0+' °C'; $('trV').textContent=q.Tr+' °C'; $('dcV').textContent=q.dc+' мм'; $('dgV').textContent=q.dg+' мм';
+  var kc=heatK(q.dc,0.8,q.evap), kg=heatK(q.dg,1.0,false);
+  var c30=heatT(q.T0,q.Tr,kc,30), g30=heatT(q.T0,q.Tr,kg,30);
+  var txt='30 минуттан кейін: қыш ыдыста '+c30.toFixed(1)+' °C, шыны ыдыста '+g30.toFixed(1)+' °C. ';
+  txt+=Math.abs(c30-g30)<0.6?'Айырма өте аз: жылудың кетуін негізінен ыдыс сыртындағы ауа қабаты тежейді, қабырға материалының үлесі кіші.':(c30<g30?'Ылғал қыш қабырғасынан су буланып, қосымша жылу әкетеді, сондықтан қыш ыдыстағы су тезірек суиды.':'Қалың қыш қабырға жылуды баяу өткізеді, сондықтан қыш ыдыстағы су жылуын ұзағырақ сақтайды.');
+  $('heatOut').textContent=txt;
+  if(st.tab==='heat') drawHeat();
+}
+function drawHeat(){
+  var q=heatParams(), p=prepChart(), x=p.x, L=64,R=28,T=84,B=56, pw=p.w-L-R, ph=p.h-T-B;
+  var y0=Math.floor((q.Tr-2)/10)*10, y1=Math.ceil((q.T0+1)/10)*10;
+  function X(m){return L+pw*m/60;} function Y(t){return T+ph-ph*(t-y0)/(y1-y0);}
+  x.fillStyle=INK; x.font='700 18px "Noto Serif", serif'; x.textAlign='left';
+  x.fillText('Судың температурасы, °C',L,28);
+  x.font='500 14px "Noto Sans", sans-serif';
+  // legend
+  x.strokeStyle=CLAY; x.lineWidth=3; x.setLineDash([]); x.beginPath(); x.moveTo(L,56); x.lineTo(L+34,56); x.stroke();
+  x.fillStyle=INK; x.fillText('қыш ыдыс',L+42,56);
+  x.strokeStyle=WATER; x.setLineDash([8,5]); x.beginPath(); x.moveTo(L+140,56); x.lineTo(L+174,56); x.stroke(); x.setLineDash([]);
+  x.fillText('шыны ыдыс',L+182,56);
+  var t;
+  for(t=y0;t<=y1;t+=10){
+    x.strokeStyle=LINE; x.lineWidth=1; x.beginPath(); x.moveTo(L,Y(t)); x.lineTo(L+pw,Y(t)); x.stroke();
+    x.fillStyle=MUTED; x.textAlign='right'; x.fillText(t,L-8,Y(t));
+  }
+  x.textAlign='center';
+  for(var m=0;m<=60;m+=10){x.fillStyle=MUTED; x.fillText(m,X(m),T+ph+18);}
+  x.fillText('уақыт, мин',L+pw/2,T+ph+40);
+  // room temperature
+  x.strokeStyle=MUTED; x.setLineDash([3,5]); x.lineWidth=1.5; x.beginPath(); x.moveTo(L,Y(q.Tr)); x.lineTo(L+pw,Y(q.Tr)); x.stroke(); x.setLineDash([]);
+  x.textAlign='right'; x.fillStyle=MUTED; x.fillText('бөлме '+q.Tr+' °C',L+pw-4,Y(q.Tr)-12);
+  var kc=heatK(q.dc,0.8,q.evap), kg=heatK(q.dg,1.0,false);
+  function curve(k,col,dash){
+    x.strokeStyle=col; x.lineWidth=3; x.setLineDash(dash); x.beginPath();
+    for(var m=0;m<=60;m+=1){var yy=Y(heatT(q.T0,q.Tr,k,m)); if(m===0)x.moveTo(X(m),yy); else x.lineTo(X(m),yy);}
+    x.stroke(); x.setLineDash([]);
+    x.fillStyle=col; x.beginPath(); x.arc(X(60),Y(heatT(q.T0,q.Tr,k,60)),5,0,TAU); x.fill();
+  }
+  curve(kc,CLAY,[]); curve(kg,WATER,[8,5]);
+  var ec=heatT(q.T0,q.Tr,kc,60), eg=heatT(q.T0,q.Tr,kg,60);
+  x.textAlign='right'; x.font='700 14px "Noto Sans", sans-serif';
+  var up=ec>=eg;
+  x.fillStyle=CLAY; x.fillText(ec.toFixed(1),X(60)-10,Y(ec)+(up?-14:16));
+  x.fillStyle=WATER; x.fillText(eg.toFixed(1),X(60)-10,Y(eg)+(up?16:-14));
+  // own measurements
+  heatOwn.forEach(function(r,i){
+    if(isFinite(r[0])){x.fillStyle=CLAY; x.strokeStyle=INK; x.lineWidth=1.5; x.beginPath(); x.arc(X(HT[i]),Y(r[0]),6,0,TAU); x.fill(); x.stroke();}
+    if(isFinite(r[1])){x.fillStyle=WATER; x.strokeStyle=INK; x.lineWidth=1.5; x.fillRect(X(HT[i])-5.5,Y(r[1])-5.5,11,11); x.strokeRect(X(HT[i])-5.5,Y(r[1])-5.5,11,11);}
+  });
+}
+(function(){
+  var tb=$('heatBody');
+  HT.forEach(function(m,i){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+m+'</td><td><input type="number" id="hc'+i+'" step="0.1" aria-label="Қыш ыдыс, '+m+' минут"></td><td><input type="number" id="hg'+i+'" step="0.1" aria-label="Шыны ыдыс, '+m+' минут"></td>';
+    tb.appendChild(tr);
+    $('hc'+i).addEventListener('input',function(e){heatOwn[i][0]=parseFloat(e.target.value);heatRender();});
+    $('hg'+i).addEventListener('input',function(e){heatOwn[i][1]=parseFloat(e.target.value);heatRender();});
+  });
+  ['t0','tr','dc','dg','evap'].forEach(function(id){$(id).addEventListener('input',heatRender);});
+  $('absModel').addEventListener('click',function(){absFill();absRender(true);});
+  absFill(); absRender(true); heatRender();
+})();
+
+/* ---------- tabs ---------- */
+var apply3D=function(){};
+function setTab(t){
+  st.tab=t;
+  document.querySelectorAll('.tabs button').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===t?'true':'false');});
+  document.querySelectorAll('.panel section').forEach(function(s){s.classList.toggle('on',s.dataset.panel===t);});
+  var is3=t!=='absorb'&&t!=='heat';
+  $('c3d').style.display=is3?'block':'none';
+  $('chartwrap').style.display=is3?'none':'block';
+  $('hint').style.display=is3?'block':'none';
+  apply3D();
+  if(t==='absorb') drawAbs();
+  if(t==='heat') drawHeat();
+}
+document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){setTab(b.dataset.tab);});});
+window.addEventListener('resize',function(){if(st.tab==='absorb')drawAbs(); if(st.tab==='heat')drawHeat();});
+
+/* ---------- 3D ---------- */
+if(typeof THREE==='undefined'){ $('fail').style.display='flex'; $('badge').style.display='none'; ['dimH','dimD','dimW'].forEach(function(i){$(i).style.display='none';}); return; }
+var canvas=$('c3d'), stage=$('stage'), renderer;
+try{ renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true}); }
+catch(e){ $('fail').style.display='flex'; return; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.localClippingEnabled=true;
+var scene=new THREE.Scene();
+var camera=new THREE.PerspectiveCamera(36,1,5,2000);
+scene.add(new THREE.HemisphereLight(0xfff4e2,0x2a323c,0.8));
+var sun=new THREE.DirectionalLight(0xffffff,0.85); sun.position.set(90,150,130); scene.add(sun);
+var fill=new THREE.DirectionalLight(0xbfd6ea,0.3); fill.position.set(-120,60,-90); scene.add(fill);
+
+var clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1),0);
+var shardMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.95,metalness:0,side:THREE.DoubleSide});
+var reconMat=new THREE.MeshStandardMaterial({color:0xd8d2c2,roughness:1,metalness:0,side:THREE.DoubleSide});
+var baseOutMat=new THREE.MeshStandardMaterial({color:0x9d9d8f,roughness:1,side:THREE.DoubleSide});
+var baseInMat=new THREE.MeshStandardMaterial({color:0x643e31,roughness:1,side:THREE.DoubleSide});
+var fireMat=new THREE.MeshStandardMaterial({color:0x7d7466,roughness:0.9,metalness:0,side:THREE.DoubleSide});
+var waterMat=new THREE.MeshStandardMaterial({color:0x3f93c9,roughness:0.15,metalness:0,transparent:true,opacity:0.8,side:THREE.DoubleSide});
+var clipMats=[shardMat,reconMat,baseOutMat,baseInMat,waterMat];
+
+// table
+var table=new THREE.Mesh(new THREE.CylinderGeometry(120,120,3,72),new THREE.MeshStandardMaterial({color:0x8d6a4a,roughness:0.75}));
+table.position.y=-1.6; scene.add(table);
+
+// shards
+var UP=new THREE.Vector3(0,1,0), ID=new THREE.Quaternion();
+var rnd=mulberry32(21);
+var shards=buildShardData().map(function(d){
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(d.pos,3));
+  g.setAttribute('normal',new THREE.Float32BufferAttribute(d.nor,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(d.col,3));
+  var mesh=new THREE.Mesh(g,shardMat);
+  var s={mesh:mesh,home:new THREE.Vector3(d.c[0],d.c[1],d.c[2]),dir:new THREE.Vector3(d.dir[0],0,d.dir[2]),y:d.y,missing:d.missing,rimFound:d.rimFound,
+    k:0.7+0.6*rnd(),placed:false,tp:new THREE.Vector3(),tq:new THREE.Quaternion()};
+  var ang=Math.atan2(d.dir[2],d.dir[0])+(rnd()-0.5)*0.5, rad=64+rnd()*36;
+  s.scatterPos=new THREE.Vector3(Math.cos(ang)*rad,5+rnd()*2,Math.sin(ang)*rad);
+  s.scatterQ=new THREE.Quaternion().setFromAxisAngle(UP,rnd()*TAU).multiply(new THREE.Quaternion().setFromUnitVectors(s.dir,UP));
+  mesh.position.copy(s.home); mesh.userData.s=s; scene.add(mesh);
+  return s;
+});
+var realShards=shards.filter(function(s){return !s.missing;});
+$('total').textContent=realShards.length;
+
+// base
+var base=new THREE.Group();
+var bOut=new THREE.Mesh(new THREE.CircleGeometry(ro(0),72),baseOutMat); bOut.rotation.x=-Math.PI/2; bOut.position.y=0.02; base.add(bOut);
+var bIn=new THREE.Mesh(new THREE.CircleGeometry(ri(WALL)+0.2,72),baseInMat); bIn.rotation.x=-Math.PI/2; bIn.position.y=WALL; base.add(bIn);
+scene.add(base);
+
+// section caps
+function capShape(top){
+  var pts=[],y;
+  for(y=0;y<=top;y+=1) pts.push(new THREE.Vector2(ro(y),y));
+  for(y=top;y>=WALL;y-=1) pts.push(new THREE.Vector2(ri(y),y));
+  for(y=WALL;y<=top;y+=1) pts.push(new THREE.Vector2(-ri(y),y));
+  for(y=top;y>=0;y-=1) pts.push(new THREE.Vector2(-ro(y),y));
+  return new THREE.ShapeGeometry(new THREE.Shape(pts));
+}
+var capMat=new THREE.MeshBasicMaterial({color:0xb5623f,side:THREE.DoubleSide});
+var capFull=new THREE.Mesh(capShape(70),capMat), capCut=new THREE.Mesh(capShape(58),capMat);
+capFull.position.z=capCut.position.z=-0.06; scene.add(capFull); scene.add(capCut);
+
+// fresh pot for firing
+var fpts=[new THREE.Vector2(0.001,0)],yy;
+for(yy=0;yy<=70;yy+=1) fpts.push(new THREE.Vector2(ro(yy),yy));
+for(yy=70;yy>=WALL;yy-=1) fpts.push(new THREE.Vector2(ri(yy),yy));
+fpts.push(new THREE.Vector2(0.001,WALL));
+var fresh=new THREE.Mesh(new THREE.LatheGeometry(fpts,96),fireMat); scene.add(fresh);
+
+// water
+var water=new THREE.Mesh(new THREE.BufferGeometry(),waterMat); scene.add(water);
+var waterCap=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:0x3f93c9,transparent:true,opacity:0.9,side:THREE.DoubleSide}));
+waterCap.position.z=-0.03; scene.add(waterCap);
+var VFULL=volTo(68), H90=levelFor(90), H100=levelFor(100);
+function updateWater(){
+  var h=+$('level').value, pts=[new THREE.Vector2(0.001,WALL+0.05)], side=[], y;
+  for(y=WALL+0.05;y<h;y+=1) side.push(new THREE.Vector2(ri(y)-0.15,y));
+  side.push(new THREE.Vector2(ri(h)-0.15,h));
+  pts=pts.concat(side); pts.push(new THREE.Vector2(0.001,h));
+  water.geometry.dispose(); water.geometry=new THREE.LatheGeometry(pts,72);
+  var sp=side.slice(), i2;
+  for(i2=side.length-1;i2>=0;i2--) sp.push(new THREE.Vector2(-side[i2].x,side[i2].y));
+  waterCap.geometry.dispose(); waterCap.geometry=new THREE.ShapeGeometry(new THREE.Shape(sp));
+  $('levelV').textContent=h.toFixed(1).replace('.',',')+' см';
+  $('liters').textContent=Math.round(volTo(h));
+}
+$('volNote').textContent='Модель бойынша 68 см деңгейге дейін шамамен '+Math.round(VFULL)+' л су сыяды. Сипаттамадағы 90–100 л бұл модельде '+Math.round(H90)+'–'+Math.round(H100)+' см деңгейге сәйкес келеді. Профиль фото мен үш өлшем (70, 74, 3 см) бойынша шамамен салынған. Дәл көлем үшін ішкі диаметрді бірнеше биіктікте өлшеңіз.';
+$('level').addEventListener('input',updateWater);
+
+// dimension lines
+var dimG=new THREE.Group(), dimMat=new THREE.LineBasicMaterial({color:0xece7dc});
+function seg(a,b){dimG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a[0],a[1],a[2]),new THREE.Vector3(b[0],b[1],b[2])]),dimMat));}
+seg([-46,0,0],[-46,70,0]); seg([-49,0,0],[-43,0,0]); seg([-49,70,0],[-43,70,0]);
+seg([-37,77,0],[37,77,0]); seg([-37,74,0],[-37,80,0]); seg([37,74,0],[37,80,0]);
+scene.add(dimG);
+var dimPts=[['dimH',new THREE.Vector3(-46,35,0)],['dimD',new THREE.Vector3(0,77,0)],['dimW',new THREE.Vector3(42,46,0)]];
+
+// firing
+var FIRE_OX=[[20,0x7d7466],[120,0xa59c8a],[450,0xab977f],[650,0xbb8565],[900,0xc2684a],[1000,0xb65a3f]];
+var FIRE_RED=[[20,0x7d7466],[120,0xa59c8a],[450,0xa39684],[650,0x8b837a],[900,0x6c6965],[1000,0x5c5a58]];
+function fireColor(T,stops){
+  for(var i=0;i<stops.length-1;i++) if(T<=stops[i+1][0]){
+    var t=(T-stops[i][0])/(stops[i+1][0]-stops[i][0]);
+    return new THREE.Color(stops[i][1]).lerp(new THREE.Color(stops[i+1][1]),t);
+  }
+  return new THREE.Color(stops[stops.length-1][1]);
+}
+function updateFire(){
+  var T=+$('temp').value, red=$('atmo').value==='red';
+  fireMat.color.copy(fireColor(T,red?FIRE_RED:FIRE_OX));
+  var glow=Math.max(0,(T-550)/450);
+  fireMat.emissive.setRGB(0.9*glow*0.55,0.32*glow*0.55,0.05*glow*0.55);
+  $('tempV').textContent=T+' °C';
+  var s;
+  if(T<120) s='Кептіру. Саздағы бос су буланады. Тым тез қыздырса, бу бұйымды жарып жібереді.';
+  else if(T<450) s='Қыздыру. Қалдық ылғал кетеді, органикалық қоспалар жанып бітеді.';
+  else if(T<650) s='Дегидроксилдену. Саз минералының құрылымындағы гидроксил топтары су буы болып бөлінеді. Бұдан кейін саз суға қайта езілмейді.';
+  else if(T<900) s='Пісу. Бөлшектер бір-біріне жабысып, берік әрі кеуекті қыш түзіледі. '+(red?'Оттегі аз болғанда темір қосылыстары сұр-қара түс береді.':'Оттегі жеткілікті болғанда темір қосылыстары қызыл-қоңыр түс береді.');
+  else s='Жоғары температура. Кеуектер азайып, қыш тығыздала бастайды.';
+  $('fireStage').textContent=s;
+}
+$('temp').addEventListener('input',updateFire); $('atmo').addEventListener('change',updateFire);
+
+// state
+function restoreCount(){
+  var n=realShards.filter(function(s){return s.placed;}).length;
+  $('placed').textContent=n; $('prog').style.width=(n/realShards.length*100)+'%';
+  $('restoreMsg').textContent=n===realShards.length?'Құмыра толық жиналды. Жарайсыз!':(n===0?'Төменгі сынықтардан бастаған ыңғайлы.':'Жалғастырыңыз: тағы '+(realShards.length-n)+' сынық қалды.');
+  $('restoreMsg').style.color=n===realShards.length?'#8fd19e':'';
+}
+apply3D=function(){
+  var tab=st.tab, is3=tab!=='absorb'&&tab!=='heat';
+  var recon=tab==='volume'||(tab==='model'&&st.recon);
+  var section=tab==='volume'||(tab==='model'&&st.section);
+  var ex=tab==='model'?st.explode:0;
+  shards.forEach(function(s){
+    var vis=tab!=='fire'&&(!s.missing||recon);
+    if(tab==='restore') vis=!s.missing;
+    s.mesh.visible=vis;
+    s.mesh.material=(s.missing&&!s.rimFound)?reconMat:shardMat;
+    if(tab==='restore'&&!s.placed){s.tp.copy(s.scatterPos); s.tq.copy(s.scatterQ);}
+    else{s.tp.copy(s.home).addScaledVector(s.dir,ex*26*s.k); s.tp.y+=ex*(s.y-35)/35*10; s.tq.copy(ID);}
+  });
+  base.visible=tab!=='fire'; fresh.visible=tab==='fire';
+  water.visible=waterCap.visible=tab==='volume';
+  capFull.visible=section&&recon&&ex<0.01;
+  capCut.visible=section&&!recon&&ex<0.01&&tab==='model';
+  clipMats.forEach(function(m){m.clippingPlanes=section?[clipPlane]:[]; m.needsUpdate=true;});
+  var showDims=is3&&tab==='model'&&st.dims;
+  dimG.visible=showDims;
+  dimPts.forEach(function(d){$(d[0]).style.display=showDims?'block':'none';});
+  var badge=$('badge');
+  badge.style.display=is3?'block':'none';
+  badge.textContent=tab==='model'?(st.recon?'Қалпына келтірілген түрі':'Мұражайдағы күйі'):tab==='restore'?'Сынықты басып, орнына қойыңыз':tab==='volume'?'Қима: ішіндегі су':'Жаңа жасалған құмыра';
+  if(tab==='restore') restoreCount();
+};
+$('stMuseum').addEventListener('click',function(){st.recon=false;$('stMuseum').setAttribute('aria-pressed','true');$('stRecon').setAttribute('aria-pressed','false');apply3D();});
+$('stRecon').addEventListener('click',function(){st.recon=true;$('stRecon').setAttribute('aria-pressed','true');$('stMuseum').setAttribute('aria-pressed','false');apply3D();});
+$('explode').addEventListener('input',function(e){st.explode=e.target.value/100;$('explodeV').textContent=e.target.value+'%';apply3D();});
+$('section').addEventListener('change',function(e){st.section=e.target.checked;apply3D();});
+$('dims').addEventListener('change',function(e){st.dims=e.target.checked;apply3D();});
+$('spin').addEventListener('change',function(e){st.spin=e.target.checked;});
+$('scatter').addEventListener('click',function(){realShards.forEach(function(s){s.placed=false;});apply3D();});
+$('autoBuild').addEventListener('click',function(){
+  var order=realShards.filter(function(s){return !s.placed;}).sort(function(a,b){return a.y-b.y;});
+  order.forEach(function(s,i){setTimeout(function(){s.placed=true;if(st.tab==='restore')apply3D();},reduce?0:i*160);});
+});
+
+// camera orbit
+var orb={az:0.55,pol:1.2,dist:235}, target=new THREE.Vector3(0,34,0);
+function placeCam(){
+  var sp=Math.sin(orb.pol);
+  camera.position.set(target.x+orb.dist*sp*Math.sin(orb.az),target.y+orb.dist*Math.cos(orb.pol),target.z+orb.dist*sp*Math.cos(orb.az));
+  camera.lookAt(target);
+}
+var ptrs=new Map(), downAt=null, pinch0=0, lastInput=0;
+var ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+canvas.addEventListener('pointerdown',function(e){
+  canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1) downAt={x:e.clientX,y:e.clientY,t:performance.now(),moved:false};
+  if(ptrs.size===2){var a=Array.from(ptrs.values()); pinch0=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y); downAt=null;}
+  lastInput=performance.now();
+});
+canvas.addEventListener('pointermove',function(e){
+  var p=ptrs.get(e.pointerId); if(!p) return;
+  var dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; lastInput=performance.now();
+  if(ptrs.size===1){
+    if(downAt&&Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>6) downAt.moved=true;
+    orb.az-=dx*0.006; orb.pol=Math.max(0.15,Math.min(1.5,orb.pol-dy*0.005));
+  }else if(ptrs.size===2){
+    var a=Array.from(ptrs.values()), d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+    if(pinch0>0) orb.dist=Math.max(110,Math.min(420,orb.dist*pinch0/d)); pinch0=d;
+  }
+});
+function endPtr(e){
+  if(ptrs.size===1&&downAt&&!downAt.moved&&performance.now()-downAt.t<600&&st.tab==='restore') pick(e);
+  ptrs.delete(e.pointerId); if(ptrs.size<2) pinch0=0; if(ptrs.size===0) downAt=null;
+}
+canvas.addEventListener('pointerup',endPtr);
+canvas.addEventListener('pointercancel',function(e){ptrs.delete(e.pointerId);downAt=null;});
+canvas.addEventListener('wheel',function(e){e.preventDefault();orb.dist=Math.max(110,Math.min(420,orb.dist*(e.deltaY>0?1.08:0.93)));lastInput=performance.now();},{passive:false});
+function pick(e){
+  var r=canvas.getBoundingClientRect();
+  ndc.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  var hits=ray.intersectObjects(realShards.filter(function(s){return !s.placed;}).map(function(s){return s.mesh;}),false);
+  if(hits.length){hits[0].object.userData.s.placed=true;apply3D();}
+}
+
+// render loop
+var W=0,Hh=0, v3=new THREE.Vector3(), last=performance.now();
+function size(){
+  var w=stage.clientWidth,h=stage.clientHeight;
+  if(w===W&&h===Hh||!w||!h) return;
+  W=w;Hh=h; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  var dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(st.tab==='absorb'||st.tab==='heat') return;
+  size();
+  if(st.spin&&ptrs.size===0&&now-lastInput>2500&&st.tab!=='restore') orb.az+=dt*0.18;
+  placeCam();
+  var a=reduce?1:1-Math.pow(0.002,dt);
+  for(var i=0;i<shards.length;i++){var s=shards[i]; s.mesh.position.lerp(s.tp,a); s.mesh.quaternion.slerp(s.tq,a);}
+  renderer.render(scene,camera);
+  if(dimG.visible) for(var j=0;j<dimPts.length;j++){
+    v3.copy(dimPts[j][1]).project(camera);
+    var el=$(dimPts[j][0]); el.style.left=((v3.x*0.5+0.5)*W)+'px'; el.style.top=((-v3.y*0.5+0.5)*Hh)+'px';
+  }
+}
+updateWater(); updateFire(); apply3D();
+shards.forEach(function(s){s.mesh.position.copy(s.tp);});
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
