@@ -788,6 +788,17 @@ const DATA = {
         { dir:"books/32", pages:7, title:"Жергілікті жердегі көктасты өндірудің экономикалық маңызы", author:"Қаржаубай Ерасыл", grade:"8-сынып", field:"Экоматериалдар", year:"2025" }
       ],
       // «Жанқожа ата туралы» бөлімшесі
+      mektep:[
+        { dir:"books/49", pages:3, title:"Ажар ауылы туралы", author:"", grade:"", field:"", year:"" },
+        { dir:"books/50", pages:2, title:"Кәукей – көне жер атауы", author:"", grade:"", field:"", year:"" },
+        { dir:"books/51", pages:3, title:"Күйікқала – ежелгі қалалардың бірі", author:"", grade:"", field:"", year:"" },
+        { dir:"books/52", pages:3, title:"Қарабура: әулие, батыр", author:"", grade:"", field:"", year:"" },
+        { dir:"books/53", pages:5, title:"Қызылқұм совхозының құрылуы", author:"", grade:"", field:"", year:"" },
+        { dir:"books/54", pages:12, title:"«Жанқожа баба» мешіті туралы", author:"", grade:"", field:"", year:"" },
+        { dir:"books/55", pages:3, title:"«Сараман-Қоса» ескерткіш-мұнарасы", author:"", grade:"", field:"", year:"" },
+        { dir:"books/56", pages:3, title:"Тарихи жәдігер – «Сатурн» кемесі", author:"", grade:"", field:"", year:"" },
+        { dir:"books/57", pages:3, title:"Ұялы елді мекенінің тарихы", author:"", grade:"", field:"", year:"" }
+      ],
       zhanqozha:[
         { dir:"books/10", pages:9, title:"«Жанқожа баба» мешіті туралы", author:"Қабылов Сәкен", grade:"", field:"", year:"" },
         { dir:"books/33", pages:4, title:"Халық батыры Жанқожа", author:"", grade:"", field:"", year:"" },
@@ -977,7 +988,7 @@ const Store = {
 };
 
 /* Бір бөлімнің бір түрдегі материалдарын біріктіру: DATA + қосылғандар */
-const KIND_MAP = { photo:"photos", video:"videos", info:"infographics", link:"interactive", book:"projects", bookz:"zhanqozha", museum:"museum" };
+const KIND_MAP = { photo:"photos", video:"videos", info:"infographics", link:"interactive", book:"projects", bookz:"zhanqozha", bookm:"mektep", museum:"museum" };
 function items(sec, kind){
   const base = (sec[KIND_MAP[kind]] || []).map((x,i)=>({ ...x, id:`d-${sec.id}-${kind}-${i}`, fixed:true }));
   const added = Store.of(sec.id, kind).map(r => kind==="link"
@@ -1149,6 +1160,7 @@ const BLOCKS = [
   { kind:"museum", key:"museum", title:"Жанқожа Нұрмұхаммедұлы атындағы мектеп мұражайы", icon:"museum", empty:"", hint:"" },
   { kind:"book", key:"projects", title:"Ғылыми жобалар", icon:"book", empty:"", hint:"" },
   { kind:"bookz", key:"zhanqozha", title:"Жанқожа ата туралы", icon:"book", empty:"", hint:"" },
+  { kind:"bookm", key:"mektep", title:"Мектеп тарихы", icon:"book", empty:"", hint:"" },
   { kind:"video", key:"videos", title:"Бейнеәңгімелер", icon:"film", accept:"video/*",
     empty:"Бейнеәңгімелер әлі қосылмаған", hint:"" },
   { kind:"link", key:"interactive", title:"Интерактивті материалдар", icon:"spark",
@@ -1249,7 +1261,7 @@ function MediaBlock(b, sec){
           <p class="mz-motto">${esc(M.motto)}</p></div>
       </div>
     </div>`;
-  } else if((b.kind==="book" || b.kind==="bookz") && list.length){
+  } else if((b.kind==="book" || b.kind==="bookz" || b.kind==="bookm") && list.length){
     body = `<p class="shelf-hint">${ic("book",17)} Кітапты басып ашыңыз — беттерін парақтап оқуға болады.</p>
     <div class="shelf">${list.map((it,i)=>`
       <button class="bk" data-book="${i}" data-bkind="${b.kind}" aria-label="Ашу: ${esc(it.title)}">
