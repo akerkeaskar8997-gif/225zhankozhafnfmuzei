@@ -776,6 +776,17 @@ p{font-weight:500}
 .route .rn{background:#DCEEFF;color:var(--blue)}
 
 @media (max-width:700px){.hero-shade{background:linear-gradient(0deg,#EEF6FF 0%,rgba(238,246,255,.95) 48%,rgba(238,246,255,.55) 78%,rgba(238,246,255,.25) 100%)!important}}
+.sl-list{display:grid;gap:34px}
+.sl-item{background:#fff;border:1px solid #D3E6F7;border-radius:var(--r-lg);padding:24px;box-shadow:0 10px 30px rgba(21,105,199,.08)}
+.sl-head{display:flex;gap:16px;align-items:flex-start;margin-bottom:18px}
+.sl-head em{font:900 34px/1 var(--f-display);font-style:normal;color:transparent;-webkit-text-stroke:1.3px rgba(21,105,199,.55);flex:none}
+.sl-head h4{font:800 clamp(19px,1.8vw,24px)/1.2 var(--f-display);color:var(--ink,#0A2540);letter-spacing:-.01em}
+.sl-head p{margin-top:6px;color:var(--blue,#1569C7);font-weight:700;font-size:15px}
+.sl-img{position:relative;display:block;width:100%;border-radius:16px;overflow:hidden;cursor:zoom-in;box-shadow:0 8px 24px rgba(10,37,64,.15)}
+.sl-img img{display:block;width:100%;height:auto;transition:transform .6s var(--ease)}
+.sl-img:hover img{transform:scale(1.02)}
+.sl-img span{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,.92);color:#0A2540;font:700 13px/1 var(--f-body);box-shadow:0 6px 18px rgba(0,0,0,.18)}
+@media (max-width:700px){.sl-item{padding:14px}.sl-head em{font-size:26px}}
 </style>
 </head>
 <body>
@@ -951,7 +962,11 @@ const DATA = {
       title:"Музей экспонаттарын ғылыми зерттеу",
       short:"Зерттеу нәтижелері мен тәжірибелік жұмыстарды цифрлық форматта ұсыну.",
       bg:"linear-gradient(150deg,#102A43 0%,#26476b 55%,#6b5a35 140%)", acc:"#F0D28F",
-      text:["Бұл бағытта Жанқожа Нұрмұхаммедұлы атындағы мектеп мұражайының экспонаттары мен тарихи-өлкетану материалдары негізінде оқушылардың өздері жүргізген алты ғылыми-зерттеу жұмысы таныстырылады.", "Зерттеулер Жанқожа батыр туралы газет мақалаларын талдау, музейдегі қыш құмыраның тарихын зерделеу, №225 орта мектептің шежіресін және Қызылқұм өңірінің тарихи-мәдени мұрасын зерттеу бағыттарын қамтиды.", "Әр зерттеу жұмысы жеке цифрлық карточка түрінде ұсынылады. Карточкада зерттеу тақырыбы, оқушының аты-жөні, ғылыми жетекшісі, зерттеу мақсаты, қолданылған әдістері, негізгі нәтижелері және толық баяндамасы орналастырылады.", "Бұл бағыттың ерекшелігі – оқушылардың музей материалдарын дайын ақпарат көзі ретінде ғана пайдаланбай, оларды өз бетінше зерттеп, талдап, ғылыми қорытынды жасау тәжірибесін көрсету."], resources:["Оқушылардың алты ғылыми-зерттеу жұмысының жеке карточкалары", "Зерттеу баяндамаларының толық мәтіндері", "Зерттеу нәтижелерін көрсететін фотоматериалдар", "Қолда бар презентациялар мен бейнеқорғаулар"], photos:[], videos:[], infographics:[], interactive:[] }
+      text:["Бұл бағытта Жанқожа Нұрмұхаммедұлы атындағы мектеп мұражайының экспонаттары мен тарихи-өлкетану материалдары негізінде оқушылардың өздері жүргізген алты ғылыми-зерттеу жұмысы таныстырылады.", "Зерттеулер Жанқожа батыр туралы газет мақалаларын талдау, музейдегі қыш құмыраның тарихын зерделеу, №225 орта мектептің шежіресін және Қызылқұм өңірінің тарихи-мәдени мұрасын зерттеу бағыттарын қамтиды.", "Әр зерттеу жұмысы жеке цифрлық карточка түрінде ұсынылады. Карточкада зерттеу тақырыбы, оқушының аты-жөні, ғылыми жетекшісі, зерттеу мақсаты, қолданылған әдістері, негізгі нәтижелері және толық баяндамасы орналастырылады.", "Бұл бағыттың ерекшелігі – оқушылардың музей материалдарын дайын ақпарат көзі ретінде ғана пайдаланбай, оларды өз бетінше зерттеп, талдап, ғылыми қорытынды жасау тәжірибесін көрсету."], resources:["Оқушылардың алты ғылыми-зерттеу жұмысының жеке карточкалары", "Зерттеу баяндамаларының толық мәтіндері", "Зерттеу нәтижелерін көрсететін фотоматериалдар", "Қолда бар презентациялар мен бейнеқорғаулар"], photos:[], videos:[], infographics:[], interactive:[],
+      slides:[
+        { src:"slides/zh-1.webp", title:"Жанқожа батырдың рухани болмысы", sub:"«Үш сүю» тұрғысынан тарихи талдау" },
+        { src:"slides/zh-2.webp", title:"Жанқожа батыр есімінің ұлттық тарихи жадта қайта жаңғыруы", sub:"Қайта құру және жариялылық кезеңінің соңғы жылдары" }
+      ] }
   ]
 };
 
@@ -1080,7 +1095,7 @@ const Store = {
 };
 
 /* Бір бөлімнің бір түрдегі материалдарын біріктіру: DATA + қосылғандар */
-const KIND_MAP = { photo:"photos", video:"videos", info:"infographics", link:"interactive", book:"projects", bookz:"zhanqozha", bookm:"mektep", museum:"museum" };
+const KIND_MAP = { photo:"photos", video:"videos", info:"infographics", link:"interactive", book:"projects", bookz:"zhanqozha", bookm:"mektep", slide:"slides", museum:"museum" };
 function items(sec, kind){
   const base = (sec[KIND_MAP[kind]] || []).map((x,i)=>({ ...x, id:`d-${sec.id}-${kind}-${i}`, fixed:true }));
   const added = Store.of(sec.id, kind).map(r => kind==="link"
@@ -1253,6 +1268,7 @@ const BLOCKS = [
   { kind:"bookz", key:"zhanqozha", title:"Жанқожа ата туралы", icon:"book", empty:"", hint:"" },
   { kind:"book", key:"projects", title:"Ғылыми жобалар", icon:"book", empty:"", hint:"" },
   { kind:"bookm", key:"mektep", title:"Өлке тарихы", icon:"book", empty:"", hint:"" },
+  { kind:"slide", key:"slides", title:"Зерттеу жұмыстары", icon:"flask", empty:"", hint:"" },
   { kind:"video", key:"videos", title:"Бейнеәңгімелер", icon:"film", accept:"video/*",
     empty:"Бейнеәңгімелер әлі қосылмаған", hint:"" },
   { kind:"link", key:"interactive", title:"Интерактивті материалдар", icon:"spark",
@@ -1352,6 +1368,11 @@ function MediaBlock(b, sec){
           <p class="mz-motto">${esc(M.motto)}</p></div>
       </div>
     </div>`;
+  } else if(b.kind==="slide" && list.length){
+    body = `<div class="sl-list">${list.map((it,i)=>`<article class="sl-item">
+        <div class="sl-head"><em>${String(i+1).padStart(2,"0")}</em><div><h4>${esc(it.title)}</h4>${it.sub?`<p>${esc(it.sub)}</p>`:""}</div></div>
+        <button class="sl-img" data-slide="${i}" aria-label="${esc(it.title)} — үлкейтіп қарау"><img src="${it.src}" alt="${esc(it.title)}" loading="lazy"><span>${ic("zoom",18)} Үлкейтіп қарау</span></button>
+      </article>`).join("")}</div>`;
   } else if((b.kind==="book" || b.kind==="bookz" || b.kind==="bookm") && list.length){
     body = `<p class="shelf-hint">${ic("book",17)} Кітапты басып ашыңыз — беттерін парақтап оқуға болады.</p>
     <div class="shelf">${list.map((it,i)=>`
@@ -1495,7 +1516,7 @@ function renderChrome(){
    8. INTERACTIONS
    ========================================================================= */
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-go],[data-act],[data-jump],[data-add],[data-del],[data-lb],[data-video],[data-close],[data-embedfs],[data-mz],[data-mzimg],[data-mzjump],[data-mztab],[data-book],[data-br],[data-vi],[data-vtfs],[data-linkform],[data-linkcancel],#editToggle,#fsToggle,#burger,#mmClose,[data-lbact]");
+  const t = e.target.closest("[data-go],[data-act],[data-jump],[data-add],[data-del],[data-lb],[data-video],[data-close],[data-embedfs],[data-mz],[data-mzimg],[data-mzjump],[data-mztab],[data-slide],[data-book],[data-br],[data-vi],[data-vtfs],[data-linkform],[data-linkcancel],#editToggle,#fsToggle,#burger,#mmClose,[data-lbact]");
   if(!t || busy) return;
   if(t.dataset.go){ e.preventDefault(); closeMenu(); closeModal("#programModal"); go(t.dataset.go); return; }
   const act = t.dataset.act;
@@ -1515,6 +1536,7 @@ document.addEventListener("click", async e => {
   if(t.dataset.video!==undefined){ openVideo(+t.dataset.video); return; }
   if(t.dataset.mz){ mzOpen(t.dataset.mz); return; }
   if(t.dataset.mzimg!==undefined){ const x = MZ.cur; if(x) openLightboxWith(x.images.map(im=>({src:im.src, caption:x.title})), +t.dataset.mzimg); return; }
+  if(t.dataset.slide!=null){ const L=items(secById(S.route),"slide"); openLightboxWith(L.map(x=>({src:x.src, caption:x.title})), +t.dataset.slide); return; }
   if(t.dataset.mztab!=null){ const n=+t.dataset.mztab, box=t.closest(".mz-about"); if(!box||isNaN(n)) return;
     $$("[data-mzpage]",box).forEach(p=>p.hidden = +p.dataset.mzpage!==n);
     $$(".mz-tabs [data-mztab]",box).forEach(b=>b.classList.toggle("on", +b.dataset.mztab===n));
