@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мұражайға виртуалды саяхат</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&family=PT+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+/* VOICE: салтанатты, жылы, мұражайлық
+   IDEA: мұражай залының ішінде тұрып, айнала қарау
+   PICTURE: залдың тігістері біріктірілген 360° панорамасы
+   COLOUR and TYPE: түнгі көк + алтын, Montserrat / Inter
+   LAYOUT: толық экран, үстіңгі тақта, төменгі мини-карта, оң жақта ақпарат */
+:root{--navy:#0B1F33;--navy2:#102A43;--gold:#D6B36A;--gold2:#E9CF95;--ease:cubic-bezier(.22,1,.36,1)}
+*{box-sizing:border-box;margin:0;padding:0;min-width:0}
+html,body{height:100%;overflow:hidden;background:#05101c;color:#fff;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+#view{position:fixed;inset:0;cursor:grab;touch-action:none}
+#view.drag{cursor:grabbing}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hsLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 58%,rgba(3,10,18,.55) 100%)}
+.hs{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:auto;cursor:pointer;transition:opacity .3s}
+.hs .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.95);background:rgba(214,179,106,.38);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .35s var(--ease),background .3s}
+.hs .ring::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff}
+.hs .pulse{position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--gold2);animation:pulse 2.2s ease-out infinite}
+@keyframes pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(2.1);opacity:0}}
+.hs .lbl{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translate(-50%,6px);white-space:nowrap;padding:8px 13px;border-radius:10px;background:rgba(11,31,51,.9);border:1px solid rgba(214,179,106,.5);font:600 13px/1.2 Inter;opacity:0;pointer-events:none;transition:all .3s var(--ease)}
+.hs:hover .lbl,.hs:focus-visible .lbl{opacity:1;transform:translate(-50%,0)}
+.hs:hover .ring{transform:scale(1.18);background:rgba(214,179,106,.8)}
+.hs .cnt{position:absolute;right:-6px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--navy2);border:1px solid var(--gold2);font:700 11px/18px Inter;text-align:center;color:var(--gold2)}
+.busy #hsLayer .hs{opacity:0;pointer-events:none}
+.cu-nav[hidden]{display:none}
+/* top */
+.top{position:fixed;left:0;right:0;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:14px 18px;background:linear-gradient(180deg,rgba(5,14,25,.85),transparent);pointer-events:none}
+.top>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:12px}
+.brand i{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--navy);font:800 15px Montserrat;font-style:normal}
+.brand .logo{width:46px;height:46px;border-radius:50%;flex:none;object-fit:cover;box-shadow:0 0 0 2px rgba(214,179,106,.8),0 6px 18px rgba(0,0,0,.35)}
+.intro-logo{width:clamp(120px,18vh,170px);height:auto;border-radius:50%;margin-bottom:18px;box-shadow:0 0 0 3px rgba(214,179,106,.7),0 0 60px rgba(214,179,106,.35);animation:fl 6s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-6px)}}
+.brand b{display:block;font:700 15px/1.2 Montserrat}
+.brand small{display:block;font:500 12px/1.3 Inter;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tools{margin-left:auto;display:flex;gap:6px;align-items:center}
+.ib{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(11,31,51,.6);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);transition:background .25s}
+.ib:hover,.ib.on{background:rgba(214,179,106,.4)}
+.deg{height:42px;padding:0 14px;border-radius:999px;display:flex;align-items:center;gap:8px;background:rgba(11,31,51,.6);border:1px solid rgba(255,255,255,.18);font:700 13px Montserrat;font-variant-numeric:tabular-nums}
+.deg svg{transition:transform .1s linear}
+/* minimap */
+.mini{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:20;width:min(760px,calc(100vw - 24px));padding:8px;border-radius:18px;background:rgba(11,31,51,.72);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .5s var(--ease),opacity .4s}
+.mini.hide{transform:translate(-50%,150%);opacity:0}
+.strip{position:relative;height:62px;border-radius:12px;overflow:hidden;cursor:pointer;background-size:100% 100%}
+.strip .win{position:absolute;top:0;bottom:0;border:2px solid var(--gold2);border-radius:8px;background:rgba(214,179,106,.12);box-shadow:0 0 0 999px rgba(5,14,25,.35)}
+.strip .dot{position:absolute;top:50%;width:7px;height:7px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--gold2);box-shadow:0 0 0 2px rgba(11,31,51,.8)}
+.mini-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding:0 4px;font:500 12px Inter;color:rgba(255,255,255,.7)}
+.hint{position:fixed;left:50%;bottom:116px;transform:translateX(-50%);z-index:14;padding:9px 16px;border-radius:999px;background:rgba(11,31,51,.75);font:500 13px Inter;color:rgba(255,255,255,.88);pointer-events:none;transition:opacity .6s;white-space:nowrap}
+/* closeup */
+.walk{position:fixed;left:0;top:0;bottom:0;right:var(--pw,0px);z-index:17;overflow:hidden;opacity:0;pointer-events:none;transition:opacity 1s ease;background:#05101c}
+.walk.show{opacity:1;pointer-events:auto}
+.walk-bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(28px) brightness(.55);transform:scale(1.1)}
+.walk-in{position:absolute;left:50%;top:50%;transition:transform 2.6s cubic-bezier(.22,1,.36,1)}
+.walk-in img{display:block;width:100%;height:100%;box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.walk-in .hs{position:absolute}
+.cu{position:fixed;left:0;top:0;bottom:0;right:var(--pw,0px);z-index:18;display:grid;place-items:center;padding:84px 24px 90px;background:rgba(5,14,25,.0);opacity:0;pointer-events:none;transition:opacity .7s ease,background .7s}
+.cu.show{opacity:1;pointer-events:auto;background:rgba(5,14,25,.88)}
+.cu-frame{position:relative;max-width:100%;max-height:100%;transform:scale(1.25);transition:transform 1.3s var(--ease)}
+.cu.show .cu-frame{transform:none}
+.cu-frame img{display:block;max-width:100%;max-height:calc(100vh - 190px);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6);transition:opacity .45s}
+.cu-frame .hs{position:absolute}
+.cu-cap{position:absolute;left:0;right:0;bottom:-40px;text-align:center;font:600 14px Inter;color:rgba(255,255,255,.85)}
+.cu-nav{position:fixed;top:50%;z-index:19;width:52px;height:52px;margin-top:-26px;border-radius:50%;display:grid;place-items:center;background:rgba(11,31,51,.75);border:1px solid rgba(214,179,106,.5)}
+.cu-nav:hover{background:rgba(214,179,106,.35)}
+.cu-nav.p{left:18px}.cu-nav.n{right:calc(var(--pw,0px) + 18px)}
+.cu-dots{position:fixed;left:0;right:var(--pw,0px);bottom:26px;z-index:19;display:flex;justify-content:center;gap:8px}
+.cu-dots button{width:58px;height:40px;border-radius:9px;overflow:hidden;border:2px solid transparent;opacity:.6}
+.cu-dots button.on{border-color:var(--gold);opacity:1}
+.cu-dots img{width:100%;height:100%;object-fit:cover}
+.back{position:fixed;left:18px;top:76px;z-index:25;display:flex;align-items:center;gap:8px;height:44px;padding:0 18px 0 12px;border-radius:999px;background:rgba(11,31,51,.8);border:1px solid rgba(214,179,106,.5);font:600 14px Inter;opacity:0;transform:translateX(-20px);pointer-events:none;transition:all .45s var(--ease)}
+.back.show{opacity:1;transform:none;pointer-events:auto}
+/* panel */
+.panel{position:fixed;top:0;right:0;bottom:0;z-index:30;width:min(440px,100vw);background:#faf7f0;color:var(--navy2);transform:translateX(105%);transition:transform .7s var(--ease);display:flex;flex-direction:column;box-shadow:-30px 0 80px rgba(0,0,0,.45)}
+.panel.open{transform:none}
+.p-head{padding:22px 24px 16px;border-bottom:1px solid rgba(16,42,67,.1);display:flex;gap:14px;align-items:flex-start}
+.p-head div{flex:1}
+.p-id{display:inline-block;padding:5px 10px;border-radius:999px;background:var(--navy2);color:var(--gold2);font:700 11px/1 Inter;letter-spacing:.04em}
+.p-head h2{margin-top:10px;font:800 21px/1.22 Montserrat}
+.p-close{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(16,42,67,.07);flex:none}
+.p-close:hover{background:rgba(16,42,67,.14)}
+.p-body{flex:1;overflow:auto;padding:20px 24px 28px}
+.p-body p{font-size:15.5px;line-height:1.7;color:#2c4257;margin-bottom:12px}
+.p-body p.lead::first-letter{font:800 2.1em/.8 Montserrat;float:left;margin:6px 10px 0 0;color:#b08a3c}
+.p-list{list-style:none;display:grid;gap:8px;margin:4px 0 14px}
+.p-list li{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:#fff;font:600 14px/1.3 Inter;box-shadow:0 1px 3px rgba(16,42,67,.08)}
+.p-list li button{text-align:left;flex:1}
+.p-list em{font:800 12px Montserrat;font-style:normal;color:#b08a3c;min-width:46px}
+.p-note{padding:14px;border-radius:14px;background:#fff;border-left:4px solid var(--gold);font-size:14px!important;line-height:1.55!important}
+.p-foot{padding:14px 24px 20px;border-top:1px solid rgba(16,42,67,.1);display:flex;gap:10px}
+.btn{flex:1;height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;font:600 14.5px Inter;background:var(--navy2);color:#fff}
+.btn:hover{background:#173A5C}
+.btn.gold{background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--navy)}
+/* intro */
+.intro{position:fixed;inset:0;z-index:50;display:grid;place-items:center;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 40%,rgba(16,42,67,.55),rgba(5,14,25,.94) 70%);transition:opacity .9s ease,visibility .9s}
+.intro.out{opacity:0;visibility:hidden}
+.intro-in{max-width:760px}
+.intro .k{display:inline-block;padding:8px 16px;border-radius:999px;border:1px solid rgba(214,179,106,.5);font:600 13px/1 Inter;color:var(--gold2)}
+.intro h1{margin-top:22px;font:800 clamp(32px,5vw,58px)/1.05 Montserrat;letter-spacing:-.02em;text-wrap:balance}
+.intro h1 span{display:block;background:linear-gradient(100deg,#f3dda3,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+.intro p{margin:18px auto 0;max-width:560px;color:rgba(255,255,255,.78);font-size:16px;line-height:1.6}
+.intro .serif{font-family:"PT Serif",Georgia,serif;font-style:italic;color:var(--gold2)}
+.start{margin-top:30px;display:inline-flex;align-items:center;gap:12px;height:58px;padding:0 30px;border-radius:999px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--navy);font:700 16px Inter;box-shadow:0 14px 40px rgba(214,179,106,.4);transition:transform .3s var(--ease)}
+.start:hover{transform:translateY(-2px) scale(1.02)}
+.start:disabled{opacity:.6}
+.credit{position:fixed;right:16px;bottom:22px;z-index:12;font:500 11px Inter;color:rgba(255,255,255,.45)}
+@media (max-width:760px){
+  .brand small{display:none}.brand .logo{width:46px;height:46px;border-radius:50%;flex:none;object-fit:cover;box-shadow:0 0 0 2px rgba(214,179,106,.8),0 6px 18px rgba(0,0,0,.35)}
+.intro-logo{width:clamp(120px,18vh,170px);height:auto;border-radius:50%;margin-bottom:18px;box-shadow:0 0 0 3px rgba(214,179,106,.7),0 0 60px rgba(214,179,106,.35);animation:fl 6s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-6px)}}
+.brand b{font-size:13px}
+  .panel{top:auto;height:62vh;width:100vw;border-radius:22px 22px 0 0;transform:translateY(105%)}
+  .panel.open{transform:none}
+  .cu{right:0;bottom:62vh;padding:70px 10px 16px}
+  .walk{right:0;bottom:62vh}
+  .cu-frame img{max-height:calc(38vh - 90px)}
+  .cu-dots,.cu-cap{display:none}
+  .cu-nav{top:calc(19vh + 20px)}.cu-nav.n{right:12px}.cu-nav.p{left:12px}
+  .strip{height:46px}.hint{bottom:96px;font-size:12px}.credit{display:none}.deg{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="view"><canvas id="cv"></canvas><div id="hsLayer"></div></div>
+<div class="vignette"></div>
+
+<header class="top">
+  <div class="brand"><img class="logo" src="img/logo.jpg" alt="Мектеп мұражайының логотипі"><div><b>Мұражайға виртуалды саяхат</b><small>Жанқожа Нұрмұхаммедұлы атындағы мектеп мұражайы · Кәукей ауылы</small></div></div>
+  <div class="tools">
+    <div class="deg"><svg id="compass" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 5l3 7h-6z" fill="currentColor"/></svg><span id="degTxt">0°</span></div>
+    <button class="ib on" id="btnAuto" title="Өздігінен айналу" aria-label="Өздігінен айналу"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+    <button class="ib" id="btnFs" title="Толық экран" aria-label="Толық экран"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+</header>
+
+<button class="back" id="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>Залға оралу</button>
+<div class="hint" id="hint">Залды сүйреп оңға-солға айналдырыңыз · Жарқыраған нүктені басыңыз</div>
+
+<div class="mini" id="mini">
+  <div class="strip" id="strip"><div class="win" id="win"></div></div>
+  <div class="mini-row"><span>Зал картасы — басқан жерге бұрыласыз</span><span id="hsCount"></span></div>
+</div>
+
+<div class="walk" id="walk"><div class="walk-bg" id="walkBg"></div><div class="walk-in" id="walkIn"><img id="walkImg" alt=""></div></div>
+<div class="cu" id="cu">
+  <div class="cu-frame" id="cuFrame"><img id="cuImg" alt=""><div class="cu-cap" id="cuCap"></div></div>
+</div>
+<button class="cu-nav p" id="cuPrev" hidden aria-label="Алдыңғы сурет"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+<button class="cu-nav n" id="cuNext" hidden aria-label="Келесі сурет"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg></button>
+<div class="cu-dots" id="cuDots"></div>
+
+<aside class="panel" id="panel" aria-live="polite">
+  <div class="p-head"><div><span class="p-id" id="pId"></span><h2 id="pTitle"></h2></div><button class="p-close" id="pClose" aria-label="Жабу"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="p-body" id="pBody"></div>
+  <div class="p-foot"><button class="btn" id="pBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>Залға оралу</button><button class="btn gold" id="pNext">Келесі нүкте<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg></button></div>
+</aside>
+
+<div class="intro" id="intro">
+  <div class="intro-in">
+    <img class="intro-logo" src="img/logo.jpg" alt="Жанқожа Нұрмұхаммедұлы атындағы мектеп мұражайы"><br><span class="k">№225 орта мектеп · Қазалы ауданы</span>
+    <h1>Мұражайға <span>панорамалық саяхат</span></h1>
+    <p>Есік алдында тұрып, Жанқожа Нұрмұхаммедұлы атындағы мектеп мұражайының залын солдан оңға қарай шолыңыз. Жәдігерді басқанда камера оған жақындайды. <span class="serif">Тарихты тану – тәуелсіздікті қадірлеу.</span></p>
+    <button class="start" id="start" disabled>Жүктелуде…</button>
+  </div>
+</div>
+<div class="credit">Құрастырушы: Ақерке Асқарқызы</div>
+
+<script>
+{
+const EX = {"ММ-001": {"title": "Жанқожа Нұрмұхаммедұлы – халық батыры", "text": "Жанқожа Нұрмұхаммедұлы (1774–1860) - өмірін елін қорғауға арнаған халық батыры. Ол қазіргі Қызылорда облысының Қазалы өңірінде дүниеге келген. Сыр бойы қазақтарының бостандығы үшін күресіп, Хиуа, Қоқан хандықтарының озбырлығына және Ресей империясының отаршылдық саясатына қарсы тұрған. Оның күресінің басты мұраты - туған жерін қорғау, елінің еркіндігін сақтау, халықты езгіден арашалау еді.\n\nЖанқожа - өмір бойы аттан түспеген халық батыры деген сипатқа лайық тұлға. Бұл сөз оның ғұмырын ел қамына арнап, қартайған шағына дейін күрес жолынан таймағанын бейнелейді. Халық басына қиындық түскенде қол бастап, сыртқы қысымға қарсы елді ұйыстыра білді. 1856–1857 жылдары жасы сексеннен асса да, Сыр бойы қазақтарының Ресей империясының отарлық езгісіне қарсы көтерілісін басқарды. Бұл - батырдың қайсарлығы мен азаттық мұратына беріктігінің айқын көрінісі.\n\n1860 жылы қаза тапқан Жанқожа батырдың есімі ел жадында сақталып қалды. Оның ерлік жолы - туған жерге сүйіспеншіліктің, табандылықтың және халыққа адал қызмет етудің өнегесі. Қазалы өңіріндегі батырға арналған кесене - елінің өз қорғанына көрсеткен құрметінің белгісі.\n\nЖанкожа Нурмухаммедулы (1774–1860) - народный батыр, посвятивший свою жизнь защите родного народа. Он родился на территории нынешнего Казалинского района Кызылординской области. Боролся за свободу казахов Присырдарья, выступая против произвола Хивинского и Кокандского ханств, а также колониальной политики Российской империи. Главной целью его борьбы были защита родной земли, сохранение свободы народа и избавление его от гнёта.\n\nЖанкожа по праву заслуживает звания народного батыра, всю жизнь не сходившего с коня. Эти слова отражают его преданность своему народу и верность избранному пути до глубокой старости. В трудные для народа времена он возглавлял отряды и объединял людей для противостояния внешнему давлению. В 1856–1857 годах, будучи старше восьмидесяти лет, он руководил восстанием казахов Присырдарья против колониального гнёта Российской империи. Это яркое свидетельство его стойкости и преданности идеалам свободы.\n\nИмя Жанкожи батыра, погибшего в 1860 году, сохранилось в народной памяти. Его героический путь - пример любви к родной земле, мужества и верного служения народу. Мавзолей, воздвигнутый в его честь в Казалинском районе, - знак благодарности и уважения народа к своему защитнику.\n\nZhankozha Nurmukhammeduly (1774–1860) was a national hero who devoted his life to defending his people. He was born in what is now the Kazaly District of the Kyzylorda Region. He fought for the freedom of the Kazakhs along the Syr Darya, resisting oppression by the Khiva and Kokand khanates, as well as the colonial policies of the Russian Empire. The central aims of his struggle were to defend his homeland, preserve his people’s freedom, and protect them from oppression.\n\nZhankozha aptly deserves to be remembered as a people’s warrior who spent his life in the saddle. This description reflects his lifelong dedication to his people and his commitment to their cause well into old age. In times of hardship, he led armed forces and united his people against external pressure. In 1856–1857, despite being over eighty years old, he led an uprising of the Kazakhs of the Syr Darya region against the colonial oppression of the Russian Empire. This stands as a powerful testament to his determination and unwavering commitment to freedom.\n\nZhankozha Batyr died in 1860, but his name has lived on in the memory of his people. His heroic life exemplifies love for one’s homeland, perseverance, and devoted service to the people. The mausoleum built in his honour in the Kazaly District is a symbol of his people’s gratitude and respect for their defender."}, "ММ-002": {"title": "Қыш құмыра", "text": "ІХ–ХІ ғасырларда оғыз тайпалары мекендеген Күйікқала қалашығынан табылған қыш құмыра. Құмыраға реконструкция жасалып, бастапқы пішіні қалпына келтірілген. Биіктігі - 70 см, диаметрі - 74 см, қабырғасының қалыңдығы - 3 см. Сыйымдылығы - 100 литр. Көлеміне қарай мұндай ыдыс су немесе азық-түлік қорын сақтауға пайдаланылған болуы мүмкін. Бұл жәдігер ортағасырлық қала тұрғындарының тұрмыс-тіршілігі мен қыш құмыра жасау өнерінен мәлімет береді."}, "ММ-003": {"title": "Кеме зәкірі", "text": "«Ұялы» маңынан табылған кеме зәкірі - ХХ ғасырға жататын, темірден жасалған жәдігер. Екі бөлек күйінде сақталған. Биіктігі - 115 см, табанының ұзындығы - 73 см, тіреуішінің ұзындығы - 112 см.\n\nЗәкір кемені су бетінде белгілі бір орында ұстап тұруға, жел мен ағыс әсерінен ығысып кетуіне жол бермеуге арналған. Суға түсірілген кезде оның табаны су түбіне тіреліп, кеменің орнықтылығын қамтамасыз еткен.\n\nБұл жәдігер –  Арал теңізінде кеме қатынасы мен су көлігін пайдалану тарихын танытатын материалдық мұра. Оның табылған орны мен құрылымын зерттеу жергілікті халықтың су жолдарымен байланысты тіршілігі туралы мәліметтерді толықтыруға мүмкіндік береді."}, "ММ-004": {"title": "Ағаш тегене", "text": "Ағаштан ойылған тегене - ХХ ғасырға жататын тұрмыстық бұйым. Биіктігі - 9 см, диаметрі - 35 см. Ас ішуге және дастарқанға тағам ұсынуға арналған.\n\nТегене - қазақ халқының күнделікті тұрмысында қолданылған дәстүрлі ағаш ыдыстардың бірі. Оның кең әрі аласа пішіні тағамды салып, ортаға қоюға ыңғайлы. Ағаштан ыдыс жасау шеберден ұқыптылық пен ептілікті талап еткен. Шеберлер ағаштың ішін ойып, ыдыстың қабырғасы мен түбін тегістеп, пайдалануға қолайлы етіп өңдеген.\n\nБұл жәдігер халқымыздың ас ішу мәдениетін, тұрмыс салтын және ағаш өңдеу өнерін танытады. Дастарқан басына жиналып, бір ыдыстан дәм тату дәстүрі отбасы мүшелерінің татулығы мен бірлігін бейнелейді.\n\nТегене - күнделікті қажетке жараған ыдыс қана емес, халықтың қолөнер тәжірибесі мен тұрмыстық мәдениетінен сыр шертетін мұра."}, "ММ-005": {"title": "Кавказ қанжары", "text": "Кәукей ауылынан табылған Кавказ қанжары - ХХ ғасырға жататын суық қару үлгісі. Болаттан жасалған, қыны былғарыдан тігілген. Қазіргі кезде жарамсыз күйде сақталған.\n\nКавказ қанжары қорғануға және жақын қашықтықтағы ұрыста қолдануға арналған. Сонымен қатар ол дәстүрлі қару жасау шеберлігін танытатын бұйымдардың бірі саналады. Қанжардың негізгі бөліктері - жүзі мен сабы. Былғары қыны қаруды алып жүруге, жүзін сыртқы әсерден қорғауға және қауіпсіз сақтауға арналған.\n\nБұл жәдігер қару жасау ісі мен оны пайдалану мәдениетін танытады. Қанжар Кәукей ауылының «Абай» көшесінде тұратын Қаршыға Нұрекешовтің ауласынан табылған. Жергілікті тұрғындардың айтуынша, 1970 жылдары қазіргі «Абай» көшесіндегі тұрғын үйлерді шешендер, осетиндер және Дағыстаннан келген азаматтар тұрғызған. Осы мәліметке сүйеніп, қанжар солардан қалған болуы мүмкін деген болжам айтылады. Алайда оның нақты кімге тиесілі болғаны мен ауылға келу тарихы қосымша зерттеуді қажет етеді."}, "ММ-006": {"title": "Тас диірмен", "text": "Қол тас диірмен - ХІХ–ХХ ғасырларға жататын, астық тартуға арналған тұрмыстық бұйым. Қара түсті қайрақ тастан жасалған. Үстіңгі және астыңғы екі диірмен тасынан тұрады. Биіктігі - 10 см, диаметрі - 32 см. Тастары дөңгелек пішінді, беті кедір-бұдырлы. Үстіңгі тасының ортасында тесік бар.\n\nҚол диірмен адамның қол күшімен жұмыс істеген. Астыңғы тас қозғалмай тұрып, үстіңгі тас айналдырылған. Ортадағы тесік арқылы салынған астық екі тастың арасына түсіп, үйкеліс әсерінен ұнтақталған. Осылайша дәнді ұнға айналдырып, күнделікті ас дайындауға пайдаланған.\n\nБұл жәдігер халықтың дәстүрлі тұрмысын, астық өңдеу тәсілдерін және еңбек құралдарын жасау тәжірибесін танытады. Қарапайым құрылымына қарамастан, қол диірмен отбасының азық дайындау ісінде маңызды орын алған. Ол - тұрмыстық қажеттілікке сай тасты өңдеп, тиімді пайдалана білген шеберліктің үлгісі."}, "ММ-008": {"title": "Көне шиті мылтық", "text": "Көне шиті мылтық - ХІХ ғасырға жататын, аңшылық мақсатта қолданылған қару. Темір мен ағаштан жасалған. Екі бөліктен тұрады. Жалпы ұзындығы - 165 см. Темір бөлігі қарудың негізгі қызметін атқарса, ағаш бөлігі оны ұстауға және иыққа тіреп көздеуге ыңғайланған.\n\nБұл мылтық - аңшылықтың халық тұрмысындағы орнын танытатын жәдігер. Аң аулау отбасының азығын толықтыруға, тері мен аң өнімдерін тұрмыстық қажетке жаратуға мүмкіндік берген. Аңшылық кәсіп мергендікті, төзімділікті, сақтықты және табиғат жағдайын терең білуді талап еткен.\n\nМылтықтың жасалуында темір өңдеу мен ағаш ұқсату шеберлігі тоғысқан. Екі материалдың үйлесімі қарудың беріктігін қамтамасыз етіп, оны пайдалануға қолайлы еткен. Ұзындығы мен құрылымы сол кезеңдегі аңшылық қарулардың ерекшелігін танытады.\n\nКөне шиті мылтық - өткен дәуірдің аңшылық дәстүрінен, шеберлердің еңбегінен және халықтың күнкөріс тіршілігінен сыр шертетін тарихи мұра. Ол қаруды тұрмыстық қажеттілікке бейімдеген тәжірибені және ұрпақтан ұрпаққа жалғасқан мергендік өнерді еске салады."}, "ММ-009": {"title": "«Радуга-7» кинопроекторы", "text": "«Радуга-7» кинопроекторы - ХХ ғасырға жататын, түрлі материалдардан жасалған кино көрсету құрылғысы. Кинопленкадағы бейнені жарық пен оптикалық жүйе арқылы экранға түсіруге арналған. Мұндай аппараттар көрерменге фильм көрсетіп, мәдени және танымдық мазмұндағы материалдарды көпшілікке ұсынуға мүмкіндік берген.\n\nҚұрылғыға қатысты таңбалау мәліметтерінде «НПО ЭКРАН», «КП-7» шифры, «ТУ-19-666-88» техникалық шарт белгісі және «1с3-7009112» артикулы көрсетілген. Таза салмағы - 14 кг, қаптамасымен бірге салмағы - 17,5 кг.\n\nКинопроектор - экрандық мәдениеттің күнделікті өмірге енуін танытатын техникалық жәдігер. Кино көрсету адамдардың басын қосып, олардың білімін кеңейтуге, өнер мен мәдениетке қызығушылығын арттыруға қызмет еткен. Бүгінде бұл аппарат өткен ғасырдағы кино көрсету техникасы мен көрермен мәдениетінің тарихынан сыр шертеді.\n\nІлеспе баспа жазбасында «1991 г. Васильковская тип. Зак. 1648-1000» деген мәлімет бар. Бұл жазба баспахана мен басылым тапсырысына қатысты болғандықтан, ондағы 1991 жылды кинопроектордың шығарылған жылы деп қабылдауға болады."}, "ММ-010": {"title": "Естелік медаль", "text": "Тың және тыңайған жерлерді игерудің 25 жылдығына арналған естелік медаль - 1954–1979 жылдар аралығын қамтитын мерейтойға арналған тарихи жәдігер. Медаль дөңгелек пішінді, екі бетіне бедерлі бейнелер мен жазулар түсірілген.\n\nБір бетінің ортасында егін алқабындағы комбайн, астық элеваторы, электр желілерінің тіректері және сәуле шашқан күн бейнеленген. Төменгі бөлігінде «1954–1979» жылдары көрсетіліп, бидай масақтары салынған. Жиегін айналдыра орыс тілінде «В ознаменование 25-летия с начала освоения целинных и залежных земель» деген жазу орналасқан. Оның мағынасы - «Тың және тыңайған жерлерді игерудің басталғанына 25 жыл толуына орай».\n\nЕкінші бетінде Кеңес Одағының мемлекеттік Елтаңбасы бейнеленген. Елтаңбаның астында тың игеруді кеңес халқының жасампаз еңбегімен байланыстыра дәріптейтін сөздер және Л. И. Брежневтің аты-жөні берілген.\n\nМедальдағы комбайн, элеватор және электр желілері ауыл шаруашылығын механикаландыруды, астық сақтау жүйесін және электрлендіруді бейнелейді.\n\nБұл жәдігер тың игеру кезеңіне қатысты тарихи жадты, сондай-ақ сол дәуірдің мерейтойлық медаль жасау өнері мен ресми идеологиясын танытады."}, "ММ-011": {"title": "Ағаш келі мен келсап", "text": "Келі мен келсап - ХХ ғасырға жататын, тары түйіп, сөк дайындауға арналған дәстүрлі тұрмыстық құралдар. Ағаштан жасалған, келінің сырты мал терісімен қапталған. Келінің биіктігі - 64 см, диаметрі - 31 см, ішкі ойығының тереңдігі - 30 см. Келсаптың ұзындығы - 108 см.\n\nКелінің іші дән салуға ыңғайланып ойылған. Ұзынша келсап дәнді түюге арналған. Тарыны келіге салып, келсаппен түю арқылы оның қауызын ажыратқан. Бұл жұмыс күшті, ептілікті және қимылдың бірқалыпты болуын талап еткен. Түйілген тарыны қауызынан тазартып, тағамға пайдаланатын сөк дайындаған.\n\nКелі мен келсап - бірін-бірі толықтыратын еңбек құралдары. Оларды жасау барысында ағашты таңдау, ішін ою, пішіндеу және бетін өңдеу шеберлігі қолданылған. Келінің сыртын терімен қаптау - бұйымның құрылымдық ерекшеліктерінің бірі.\n\nБұл жәдігерлер қазақ халқының дән өңдеу тәжірибесін, ас дайындау мәдениетін және күнделікті еңбегін танытады. Келі мен келсап - дәстүрлі тұрмыста маңызды орын алған, ұрпақтан ұрпаққа жалғасқан шаруашылық дағдылары мен қолөнер шеберлігінен сыр шертетін мұра."}, "ММ-012": {"title": "Ағаш күбі", "text": "Ағаш күбі – ХІХ-ХХ ғасырларға жататын, сүт өнімдерін өңдеуге арналған дәстүрлі тұрмыстық ыдыс. Ағаштан жасалған. Биіктігі - 77 см, диаметрі - 19 см. Піспегінің ұзындығы - 116 см.\n\nКүбінің іші сұйықтық құюға ыңғайланып ойылған. Ұзын піспегі ішіндегі өнімді пісуге, араластыруға арналған. Піспекті жоғары-төмен қозғалту арқылы сұйықтықты біркелкі араластырып отырған. Күбі тұрмыста қымыз пісуге, сондай-ақ ашытылған сүт өнімдерін пісіп, май алуға пайдаланылған.\n\nАғаш күбі жасау шеберден ұқыптылық пен ағаш өңдеу тәжірибесін талап еткен. Ыдыстың сұйықтық өткізбейтіндей берік болуы, ал піспегінің қолға ұстауға және қозғауға қолайлылығы маңызды саналған. Күбі мен піспек бірін-бірі толықтырып, күнделікті ас дайындау еңбегін атқаруға қызмет еткен.\n\nБұл жәдігер қазақ халқының сүт тағамдарын дайындау мәдениетін, дәстүрлі шаруашылығын және ағаш ұқсату өнерін танытады. Ол — табиғи материалды тұрмыстық қажетке бейімдеген қолөнер шеберлігі мен ұрпақтан ұрпаққа жалғасқан тәжірибенің мұрасы."}, "ММ-013": {"title": "«Жәмпейіс» қорымынан табылған көне қыш ыдыс", "text": "Бұл қыш ыдыс Кәукей ауылы маңындағы «Жәмпейіс» қорымынан табылған. Ол өңірдің тұрмыстық мәдениеті мен қыш бұйымдар жасау дәстүрін зерттеуге мүмкіндік беретін археологиялық жәдігер болып саналады. Археолог мамандардың пікірінше, бұйым VIII–IX ғасырларға жатқызылады.\n\nЫдыстың биіктігі - шамамен 12 см, сыртқы шеңберінің ұзындығы – 37 см. Диаметрі – 12 см. Сыйымдылығы - 0,75 литр.\n\nЫдыстың жиегі дөңгелек пішінді өрнектермен безендірілген. Өрнектердің орналасуы, қайталану реті және орындалу тәсілі бұйымның көркемдік ерекшелігін сипаттауға мүмкіндік береді.\n\nҚыш ыдыс қымыз немесе басқа сусын құюға арналған. Ыдыстың аузы мен мойнының пішіні, қабырғасының қалыңдығы, ішкі бетінің өңделуі және пайдалану іздері оның тұрмыстық қызметін нақтылауға көмектеседі.\n\nЖәдігердің қорымнан табылуы оның жерлеу ғұрпымен ықтимал байланысын қарастыруға негіз береді.\n\nЖәмпейіс қорымынан табылған қыш ыдыстың тарихи маңызы - оның өңір тұрғындарының тұрмысы, қолөнер дәстүрі және ықтимал ғұрыптық тәжірибесі туралы дерек бере алуында. Жәдігерді жан-жақты зерттеу оның жасалу уақытын, қолданылу мақсатын және жергілікті мәдениет тарихындағы орнын нақтылауға мүмкіндік береді."}, "ММ-014": {"title": "«Жәмпейіс» қорымынан табылған тұтқалы көне қыш ыдыс", "text": "Бұл тұтқалы қыш ыдыс Кәукей ауылы маңындағы «Жәмпейіс» қорымынан табылған. Жәдігер өңір тұрғындарының тұрмыстық мәдениеті мен қыш бұйымдар жасау дәстүрін зерттеуге мүмкіндік береді. Ұсынылған мәліметте археолог мамандардың пікіріне сүйеніп, бұйым VIII–IX ғасырларға жатқызылған.\n\nЫдыстың биіктігі - шамамен 10 см, сыртқы шеңберінің ұзындығы - 30 см, сыртқы диаметрі - шамамен 10 см. Сыйымдылығы шамамен 0,4 литрге жуық.\n\nБұйымның негізгі ерекшелігі - тұтқасының болуы. Тұтқа ыдысты ұстауға, көтеруге және ішіндегі сұйықтықты құюға қолайлылық туғызады. Шағын өлшемі мен тұтқасының болуы оның күнделікті тұрмыста сусын ішуге немесе сұйықтық құюға пайдаланылған болуы мүмкін екенін көрсетеді.\n\nТұтқаның пішіні, қалыңдығы және ыдыс денесіне бекітілу тәсілі бұйымның жасалу технологиясын сипаттайтын маңызды белгілерге жатады. Тұтқа мен ыдыс қабырғасының түйіскен жерлерін зерттеу олардың қалай біріктірілгенін анықтауға көмектеседі. Ал саз құрамын, қабырғасының қалыңдығын, бетінің өңделуін және күйдірілу белгілерін талдау қыш шеберінің жұмыс тәсілдері туралы қосымша мәлімет бере алады.\n\nЖәдігердің қорымнан табылуы оның жерлеу ғұрпымен ықтимал байланысын қарастыруға негіз болады. Алайда оны марқұммен бірге қойылған ғұрыптық зат деп тану үшін табылған орны мен қабаты, қабірге және басқа заттарға қатысты орналасуы туралы қазба деректері қажет.\n\nЫдыстың тарихи құндылығы оның шағын тұрмыстық бұйым ретінде сол кезеңдегі адамдардың күнделікті қажетіне, қолөнер дағдыларына және материалдық мәдениетіне қатысты мәлімет бере алуында. Мерзімі анықталған ұқсас тұтқалы ыдыстармен салыстыру және табылу жағдайын зерттеу жәдігердің жасалу кезеңі мен қызметін нақтылауға мүмкіндік береді."}, "ММ-015": {"title": "«Radiotehnika Т-101-стерео» радиотюнері", "text": "«Radiotehnika Т-101-стерео» - радиостанциялардың хабарларын қабылдауға арналған тұрмыстық электрондық құрылғы. Ол ұзын, орта, қысқа және ультрақысқа толқындарда берілетін радиобағдарламаларды қабылдайды. Дыбысты тыңдау үшін күшейткіш пен дыбыс зорайтқыштарға қосылады. 1983 жылы шығарылған.\n\nҚұрылғының пішіні - тік төртбұрышты, алдыңғы панелі күміс түсті. Беткі бөлігінде радиожиілікті баптау шкаласы, толқын диапазондарын ауыстыратын батырмалар және алдын ала таңдалған радиостанцияларға қосылуға арналған басқару тетіктері орналасқан.\n\nБұл радиотюнер тұрмыста жаңалықтар, музыка және басқа да радиохабарларды тыңдауға пайдаланылған. Музейлік жәдігер ретінде ол өз кезеңіндегі тұрмыстық техника мен радиобайланыс мәдениетін таныстырады."}, "ММ-016": {"title": "Кассеталы магнитофон", "text": "Кассеталы магнитофон - магниттік таспасы бар аудиокассетаға дыбыс жазуға және жазылған дыбысты қайта тыңдауға арналған тұрмыстық электрондық құрылғы. Ол музыка, ән, әңгіме және басқа да дыбыстық жазбаларды тыңдау үшін пайдаланылған.\n\nСуреттегі магнитофонның корпусы тік төртбұрышты, қара түсті. Алдыңғы бетінің сол жағында кассета салатын бөлік, оң жағында дыбыс зорайтқыштың торы орналасқан. Жоғарғы бөлігінде құрылғының жұмысын басқаратын батырмалар мен айналмалы реттегіштер бар. Үстіңгі тұтқасы магнитофонды алып жүруге арналған.\n\nКассеталы магнитофондар тұрмыста музыкалық шығармаларды, отбасылық әңгімелерді және түрлі дыбыстық жазбаларды сақтауға мүмкіндік берген. Музейлік жәдігер ретінде бұл құрылғы дыбыс жазу техникасының дамуын және өз кезеңіндегі адамдардың музыка тыңдау мәдениетін таныстырады."}, "ММ-019": {"title": "«Вега-104-стерео» күйтабақ ойнатқышы", "text": "«Вега-104-стерео» - күйтабаққа жазылған әндер мен музыкалық шығармаларды тыңдауға арналған электрлі дыбыс ойнату құрылғысы. Күнделікті қолданыста мұндай құрылғыларды граммофон деп те атағанымен, суреттегі бұйым - электр қуатымен жұмыс істейтін стереофондық күйтабақ ойнатқыш.\n\nҚұрылғының корпусы тікбұрышты, үстіңгі бөлігі мөлдір қақпақпен жабылған. Қақпақтың астында күйтабақ салатын айналмалы табақша және дыбыс түсіргіш ине орнатылған иін орналасқан. Алдыңғы панелінде қосу түймесі, жұмыс режимдерін таңдау батырмалары, дыбыс деңгейін, стереоарналар теңгерімін және төменгі әрі жоғарғы жиіліктерді реттейтін тұтқалар бар.\n\nМузыка тыңдау үшін күйтабақты айналмалы табақшаға қойып, дыбыс түсіргіш инені оның жүлгесіне түсіреді. Күйтабақ айналғанда ине жүлге бойымен қозғалып, жазылған дыбысты электрлік сигналға айналдыратын жүйеге жеткізеді. Сигнал күшейтіліп, дыбыс зорайтқыштар арқылы естіледі.\n\nБұл бұйым - ХХ ғасырдағы тұрмыстық дыбыс техникасын және адамдардың музыка тыңдау мәдениетін танытатын жәдігер. Ол күйтабақ арқылы ән-күй тыңдап, музыкалық мұраны насихаттау дәстүрінен мәлімет береді."}, "ММ-020": {"title": "Пионер барабаны", "text": "Пионер барабаны - ХХ ғасырдың кеңестік кезеңінде мектеп оқушылары салтанатты жиындарда, мерекелік шерулерде және пионер ұйымының іс-шараларында қолданған ұрмалы музыкалық аспап.\n\nБарабанның шанағы цилиндр пішінді. Оның екі жағына дыбыс шығаратын жарғақ керіліп, металл жиектермен бекітілген. Жарғақты екі таяқшамен кезек соғу арқылы ырғақты дыбыс шығарады. Аспапты арнайы баумен мойынға немесе иыққа асып алып ойнаған. Шанақ пен жарғақтың нақты материалын бұйымды қарап анықтауға болады.\n\nБарабан үні оқушылардың саппен біркелкі адымдауына көмектесіп, салтанатты рәсімдерді сүйемелдеген. Оны ойнаған оқушы саптың алдыңғы қатарында жүріп, ортақ қозғалыс ырғағын белгілеген.\n\nПионер барабаны - кеңестік кезеңдегі мектеп өмірін, оқушылар ұйымының қызметін және ұжымдық іс-шаралар өткізу дәстүрін танытатын тарихи жәдігер."}, "ММ-021": {"title": "Пионер горны", "text": "Пионер горны - ХХ ғасырдың кеңестік кезеңінде мектептегі салтанатты жиындар мен пионер ұйымының іс-шараларында белгі беру үшін қолданылған үрмелі музыкалық аспап.\n\nАспап металдан жасалған. Құрылысы иілген түтіктен, үрлеуге арналған мүштіктен және дыбыс шығатын кеңейтілген ұңғыдан тұрады. Горнның дыбыс биіктігін өзгертетін клапандары болмайды. Орындаушы еріннің қалпы мен үрлеу күшін өзгерту арқылы түрлі дыбыс шығарады.\n\nГорнның ашық әрі қатты үні оқушыларды сапқа жиналуға шақыруға, салтанатты рәсімдердің басталуын білдіруге пайдаланылған. Оны арнайы дайындалған горншы оқушы ойнаған.\n\nПионер горны -кеңестік кезеңдегі мектеп оқушыларының қоғамдық өмірін, пионер ұйымының рәсімдері мен музыкалық белгі беру дәстүрін бейнелейтін тарихи жәдігер."}, "ММ-022": {"title": "№225 мектеп кәсіподақ комитетінің мөрі", "text": "Ағаш сапты резеңке мөр - ХХ ғасырға жататын, мектептің кәсіподақ комитетінің іс қағаздарына таңба басуға арналған шағын кеңсе бұйымы. Қолға ұстайтын сабы ағаштан, таңба түсіретін төменгі бөлігі резеңкеден жасалған. Резеңке бетінде «ВШ №225 Профком» деген жазу бар.\n\nАғаш сабы мөрді нық ұстап, қағаз бетіне біркелкі басуға ыңғайланған. Резеңке бөлігіндегі бедерлі жазуға арнайы бояулы жастықша арқылы бояу жұқтырып, құжатқа басқан. Осылайша қағаз бетіне ұйымның атауы түсірілген.\n\nМөрдегі «Профком» сөзі кәсіподақ комитетін білдіреді. Берілген мәлімет бойынша, бұйым №225 мектептің кәсіподақ комитетіне тиесілі болған. Мұндай мөр ұйымның қызметіне қатысты іс қағаздарын рәсімдеу кезінде қолданылған.\n\nБұл шағын бұйым мектептің білім беру қызметімен қатар, ұжымның қоғамдық өмірінен де мәлімет береді. Мектептегі кәсіподақ комитеті қызметкерлердің еңбек жағдайы мен әлеуметтік мүдделеріне қатысты мәселелермен айналысқан.\n\nАғаш сапты резеңке мөр - ХХ ғасырдағы мектептің іс қағаздарын жүргізу тәжірибесін, кәсіподақ ұйымының қызметін және кеңсе мәдениетін танытатын тарихи жәдігер."}, "ММ-023": {"title": "Батырмалы телефон аппараты", "text": "Батырмалы телефон аппараты - ХХ ғасырға жататын, қашықтықтан сөйлесуге арналған тұрмыстық байланыс құралы. Негізгі корпусы пластмассадан жасалған. Телефон желісі арқылы адамдардың бір-бірімен хабарласуына мүмкіндік берген.\n\nАппарат телефон тұтқасынан, оны орналастыратын тұғырдан және нөмір теруге арналған цифрлы батырмалардан тұрады. Тұтқа ширатылған сым арқылы корпусқа жалғанған. Тұтқаның бір бөлігінде сөйлеуге арналған микрофон, екінші бөлігінде дыбысты естуге арналған бөлік орналасқан. Құрылғыда жарық индикаторы бар.\n\nҚоңырау шалу үшін тұтқаны көтеріп, қажетті телефон нөмірін батырмалар арқылы терген. Кіріс қоңырауы дыбыстық белгімен хабарланған. Әңгіме аяқталған соң тұтқаны тұғырына қойған.\n\nБатырмалы телефон нөмір теретін айналмалы дискісі бар аппараттардан кейін кең таралған. Цифрлы батырмалар қажетті нөмірді жылдам әрі ыңғайлы теруге жағдай жасаған. Мұндай телефондар үйлерде, мектептерде және түрлі мекемелерде пайдаланылған.\n\nБұл телефон аппараты - ХХ ғасырдағы байланыс техникасының дамуын және адамдардың күнделікті қарым-қатынас мәдениетін танытатын тарихи-тұрмыстық жәдігер."}, "ММ-024": {"title": "Солдат құтысы", "text": "Солдат құтысы - ХХ ғасырға жататын, әскери қызмет кезінде ауызсу сақтауға және алып жүруге арналған тұрмыстық бұйым. Алюминийден жасалған, түсі сұр. Сыйымдылығы - 1 литр.\n\nҚұты су құюға және тасымалдауға ыңғайланып жасалған. Аузы тар, қақпақпен жабылады. Қақпағы судың төгілуіне жол бермей, ішіндегі сұйықтықты шаң-тозаңнан қорғайды. Алюминийдің жеңілдігі құтыны жорықта және күнделікті әскери қызметте алып жүруге қолайлы еткен.\n\nМұндай құтылар сарбаздардың жеке жабдықтарының бірі болған. Оларды әскери жаттығуларда, жорықтарда және далалық жағдайда ауызсу қорын сақтау үшін пайдаланған.\n\nАлюминий солдат құтысы - ХХ ғасырдағы әскери тұрмысты, сарбаздардың күнделікті өмірін және далалық жабдықтарын танытатын тарихи жәдігер."}, "ММ-025": {"title": "Солдаттың ас қазаны", "text": "Солдаттың ас қазаны - әскери қызметшілердің далалық жағдайда тамақ ішуіне, тағам тасуына және ас сақтауына арналған жеке ыдысы. Мұндай әскери ыдыстар алюминийден жасалған.\n\nСуреттегі бұйымның денесі сопақша пішінді, сырты қорғанышы жасыл түске боялған. Негізгі ыдыстан, алмалы-салмалы қақпақтан және көтеруге арналған доға тәрізді сым тұтқадан тұрады. Алдыңғы жағында қақпақтың жиналмалы жалпақ тұтқасы орналасқан. Ол бүктелген кезде қақпақты бекітіп ұстайды.\n\nНегізгі бөлігі сұйық тағам құюға, ал қақпағы бөлек ас ыдысы ретінде пайдаланылған. Доға тұтқасы қазанды алып жүруге және ас әзірлегенде іліп қоюға мүмкіндік берген. Қақпағын тағам жылытуға да қолданған.\n\nБұл жәдігер әскери қызметшілердің күнделікті тұрмысын, жорық жағдайындағы тамақтану мәдениетін және жеке жабдықтарының ерекшелігін танытады."}, "ММ-026": {"title": "Кеңес әскерінің бес жұлдыз таңбалы жез белдік тоғасы", "text": "Кеңес әскерінің белдік тоғасы - ХХ ғасырдың кеңестік кезеңіне жататын әскери киім жабдығының бір бөлшегі. Жезден жасалған. Белдіктің екі ұшын біріктіріп, оны белге бекітуге арналған.\n\nТоғаның бетіне бес бұрышты жұлдыз бейнесі бедерленген. Бес жұлдыз - Кеңес әскерінің айырым белгілерінің бірі. Жездің сарғыш түсі бұйымға өзіндік сипат береді. Артқы жағындағы бекіткіш тетігі арқылы белдікке орнатылады.\n\nМұндай тоға әскери қызметшілердің күнделікті және салтанатты киімдерінің белдігіне тағылған. Ол белдікті бекітумен қатар, әскери киімнің жинақы тұруын қамтамасыз еткен.\n\nБұл жәдігер кеңестік кезеңдегі әскери киім үлгісін, әскер тұрмысын және әскери рәміздерді танытатын бұйым болып саналады."}};
+
+/* ===== Нүктелер: u,v — панорамадағы орны (%) ===== */
+const POINTS = [
+  {id:'keli', u:4.3, v:69.9, l:'Ағаш келі мен келсап', ex:'ММ-011'},
+  {id:'kubi', u:8.9, v:77.1, l:'Ағаш күбі', ex:'ММ-012'},
+  {id:'zakir', u:13.7, v:64.6, l:'Кеме зәкірі', ex:'ММ-003'},
+  {id:'lok', u:14.4, v:15.7, l:'Өлкенің локациялық картасы', info:'lokaciya', shots:['img/o/p08.jpg']},
+  {id:'sore', u:18.8, v:60.2, l:'Көне техника сөресі', info:'sore', shots:['img/o/p06.jpg','img/o/n12.jpg','img/o/n03.jpg','img/o/n10.jpg']},
+  {id:'saraman', u:11.2, v:7, l:'Сараман-Қоса мұнарасы', info:'saraman', shots:['img/o/p08.jpg']},
+  {id:'saturn', u:18.3, v:6, l:'«Сатурн» кемесі', info:'saturn', shots:['img/o/p08.jpg']},
+  {id:'tilek', u:23.6, v:68.2, l:'Тілек кітабы', info:'tilek'},
+  {id:'ardager', u:30.8, v:29.0, l:'Ардагерлер стенді', info:'ardager', shots:['img/o/p02.jpg','img/o/n11.jpg','img/o/n09.jpg']},
+  {id:'jankozha', u:42.3, v:30.8, l:'Жанқожа Нұрмұхаммедұлы', ex:'ММ-001', walk:'img/o/p01.jpg', walkHs:[{x:20,y:93,shot:'img/o/n08.jpg',l:'«Жанқожа батыр» жинақтары'},{x:72,y:90,shot:'img/o/n16.jpg',l:'«Жанқожа батыр газет беттерінде»'}]},
+  {id:'qr', u:49.5, v:32.6, l:'Жанқожа батыр туралы деректер', info:'qr', shots:['img/o/n14.jpg','img/o/n13.jpg','img/o/n15.jpg']},
+  {id:'kures', u:22.6, v:17.4, l:'Азаттық күрес жолы картасы', info:'kures', shots:['img/o/p07.jpg']},
+  {id:'meshit', u:54.8, v:62.8, l:'Жанқожа атындағы ауыл мешіті', info:'meshit', shots:['img/o/p05.jpg']},
+  {id:'kiim', u:62.5, v:29.9, l:'Оғыз киімі', info:'kiim', shots:['img/o/p03.jpg']},
+  {id:'proektor', u:63.0, v:46.8, l:'«Радуга-7» кинопроекторы', ex:'ММ-009', shots:['img/o/p04.jpg']},
+  {id:'kumyra', u:61.1, v:63.7, l:'Қыш құмыра', ex:'ММ-002'},
+  {id:'qyzylqum', u:85.6, v:34.4, l:'Қызылқұм өңірінің тарихы', info:'qyzylqum'},
+  {id:'sorelar', u:82.7, v:86.0, l:'Стенд астындағы сөрелер', info:'sorelar', shots:['img/o/n01.jpg','img/o/n02.jpg','img/o/n06.jpg','img/o/n07.jpg','img/o/n04.jpg','img/o/n05.jpg']}
+];
+/* жақын суреттердегі нүктелер (%) */
+const SUB = {
+  'img/o/p02.jpg':[{x:42,y:85,ex:'ММ-008'}],
+  'img/o/p04.jpg':[{x:43,y:24,ex:'ММ-009'},{x:52,y:72,ex:'ММ-002'}],
+  'img/o/p03.jpg':[{x:30,y:82,ex:'ММ-009'}],
+  'img/o/p06.jpg':[{x:21,y:82,ex:'ММ-016'},{x:55,y:68,ex:'ММ-015'},{x:86,y:64,ex:'ММ-019'}],
+  'img/o/n12.jpg':[{x:30,y:24,ex:'ММ-008'},{x:9,y:84,ex:'ММ-016'},{x:44,y:82,ex:'ММ-015'},{x:82,y:76,ex:'ММ-019'}],
+  'img/o/n03.jpg':[{x:24,y:55,ex:'ММ-016'},{x:64,y:55,ex:'ММ-015'}],
+  'img/o/n10.jpg':[{x:55,y:48,ex:'ММ-019'}],
+  'img/o/n09.jpg':[{x:55,y:38,ex:'ММ-025'},{x:73,y:43,ex:'ММ-024'},{x:60,y:82,ex:'ММ-010'},{x:68.5,y:81,ex:'ММ-022'}],
+  'img/o/n01.jpg':[{x:58,y:44,ex:'ММ-013'},{x:70,y:42,ex:'ММ-014'},{x:66,y:78,ex:'ММ-005'}],
+  'img/o/n02.jpg':[{x:31,y:52,ex:'ММ-006'},{x:64,y:50,ex:'ММ-004'}],
+  'img/o/n06.jpg':[{x:33,y:68,ex:'ММ-020'},{x:22,y:16,ex:'ММ-021'}],
+  'img/o/n07.jpg':[{x:34,y:42,ex:'ММ-023'}]
+};
+const CAP = {
+  'img/o/p01.jpg':'Батыр бейнесі мен оның астындағы материалдар','img/o/n08.jpg':'«Жанқожа батыр» жинақтары, 240 жылдыққа арналған іс-шаралар','img/o/n16.jpg':'«Жанқожа батыр газет беттерінде 1989–1994» жинағы мен «Тұран-Қазалы» газеті',
+  'img/o/n14.jpg':'Жанқожа батыр туралы деректер: QR-кодты парақтар','img/o/n13.jpg':'«Ел қорғаны Ер Жәкем», «Наркескен», «Жанқожа батыр туралы жырлар»','img/o/n15.jpg':'Жанқожа батырға арналған кітаптар',
+  'img/o/p02.jpg':'Ардагерлер стенді','img/o/n11.jpg':'Ардагерлердің суреттері мен құжаттары','img/o/n09.jpg':'«Майдангер ағаларым» және соғыс жылдарының жәдігерлері',
+  'img/o/p06.jpg':'Өлке нысандары мен көне техника','img/o/n12.jpg':'Шиті мылтық және көне техника','img/o/n03.jpg':'Магнитофон мен радиотюнер','img/o/n10.jpg':'«Вега-104-стерео» күйтабақ ойнатқышы',
+  'img/o/n01.jpg':'Археологиялық олжалар','img/o/n02.jpg':'Тас диірмен мен ағаш тегене','img/o/n06.jpg':'Пионер барабандары мен горндары','img/o/n07.jpg':'Телефон аппараттары','img/o/n04.jpg':'Кәсіподақ билеттері','img/o/n05.jpg':'Мектеп мұрағаты: диплом, кітаптар, «Озаттар шеруі 2018»',
+  'img/o/p04.jpg':'Терезе алдындағы экспозиция','img/o/p03.jpg':'Оғыз киімі','img/o/p05.jpg':'Жанқожа атындағы ауыл мешітінің макеті','img/o/p07.jpg':'Азаттық күрес жолы картасы','img/o/p08.jpg':'Локациялық карта'
+};
+const INFO = {
+  lokaciya:{id:'Карта', title:'Өлкенің тарихи-археологиялық ескерткіштері мен мәдени мұра нысандарының локациялық картасы',
+    html:'<p>Картада өлкедегі тарихи-мәдени нысандар туризм жолымен бір маршрутқа біріктірілген. Маршрут Кәукей ауылынан басталады.</p>',
+    list:['Кәукей ауылы','Сараман Қоса мұнарасы','Ажар ауылы','Қызылқұм ауылы','Жанқожа батыр заставасы (шекара бекеті)','Жанқожа батыр мазары','Ұялы ауылы','«Сатурн» кемесі','Қарабура ата мазары','Карістам','Күйікқала']},
+  kures:{id:'Карта', title:'Жанқожа Нұрмұхаммедұлының азаттық күрес жолы',
+    html:'<p>Картада батырдың Хиуа хандығына, Қоқан хандығына және Ресей империясына қарсы күрес жолдары шартты түрде көрсетілген.</p>',
+    list:['Жаңақала','Қосқорған','Дәуқара','Созақ','Бабажан','Қожаниз','Райым','Қазалы','Арықбалық','Қасқа құдық (Боқан таулары)'],
+    note:'Картадағы ескерту: географиялық нысандар мен қозғалыс бағыттары шартты түрде көрсетілген. Материал тарихи оқиғаларды көрнекі түсіндіруге арналған, географиялық карта болып табылмайды.'},
+  sore:{id:'Сөре', title:'Көне техника сөресі',
+    html:'<p>Сөренің үстінде өлкенің тарихи-мәдени нысандарының суреттері маршрут ретімен тізілген, төменгі бөлігінде ХХ ғасырдың дыбыс техникасы қойылған.</p>', ids:['ММ-008','ММ-016','ММ-015','ММ-019']},
+  saraman:{id:'Сәулет ескерткіші', title:'Сараман-Қоса мұнарасы', html:'<p>Сараман-Қоса мұнарасы — Кәукей ауылындағы республикалық маңызы бар сәулет өнері ескерткіші. Ол XI ғасырда тұрғызылған делінеді.</p><p style="font:700 12px Inter;letter-spacing:.06em;color:#9a7536;margin:18px 0 8px">СӘУЛЕТТІК ЕРЕКШЕЛІГІ</p><ol class="p-list"><li><em>11–12 м</em>биіктігі (шамамен)</li><li><em>25 м</em>диаметрі</li><li><em>Пішіні</em>дөңгелек құрылым</li><li><em>Іші</em>қам кірпіштен өрілген</li><li><em>Сырты</em>күйдірілген қыш кірпіштен өрілген</li><li><em>Жоғарысы</em>үш қарауыл тесігі бар</li></ol><p style="font:700 12px Inter;letter-spacing:.06em;color:#9a7536;margin:18px 0 8px">ЕЛ АУЗЫНДАҒЫ АҢЫЗ</p><p>Мұнараға қатысты аңыздың бір нұсқасы Жент билеушісінің ұлы Сараман, оның адал досы Қосай және ғашық қыздың тағдыры туралы баяндайды.</p><p>Ескерткіштің шынайы тарихи мәні әлі де жұмбақ: бұл қос ғашықтың ескерткіші ме, әлде өлімге бас тіккен адал достықтың белгісі ме? Бұл сұрақ терең зерттеуді қажет етеді.</p><p class="p-note">Өткеннің тасада қалған сырларын ашып, тарихи мұраны кейінгі ұрпаққа жеткізу — біздің буынның маңызды борышы.</p>'},
+  saturn:{id:'Өлке нысаны', title:'«Сатурн» кемесі', html:'<p class="lead">«Сатурн» — Арал теңізінің табанында, Қызылқұмның батыс беткейіндегі «Зәруха жалы» (Заузан) маңында, байырғы Ұялы ауылының орнынан 18 шақырым жерде жатқан ағаш кеме.</p><ol class="p-list"><li><em>19 м</em>ұзындығы</li><li><em>6 м</em>ені</li><li><em>3 м</em>биіктігі</li></ol><p>Теңіз шалқып тұрған шақта кеме «Ұялы» ауылдық кеңесіне қарасты 12 елді мекенді азық-түлікпен және тұрмыстық заттармен қамтамасыз етуге қызмет еткен. Кезекті жүк тасымалы кезінде кеме теңіздің кешкі асау дауылына тап болып, «Қос шегенді» маңындағы қолтыққа паналайды. Алайда алып толқын кемені жағалауға қарай ығыстырып шығарған, ал таңертең дауыл басылғанда теңіз суының шегініп кеткені белгілі болады.</p><p>Экипаж «теңіз суы қайта көтерілер» деген үмітпен кемені уақытша қалдырғанымен, Аралдың тартылуына байланысты айдын кері оралмай, «Сатурн» шөл далада мәңгілікке қайырлап қалған.</p><p>Аптап ыстық пен қара суыққа төтеп беріп, әр жері шұрық-тесік болған ағаш кеме жел соққан сайын сықырлап, теңіз-анасынан айрылған тірі жандай уілдейді. Бүгінде ол — Арал апатының үнсіз куәгері.</p><p class="p-note">Кеме өлкенің локациялық картасында 8-нысан ретінде белгіленген.</p>'},
+  tilek:{id:'Мұражай кітаптары', title:'Тілек кітабы мен экспонаттарды тіркеу журналы',
+    html:'<p>Кіреберісте қонақтар пікірін жазатын «Тілек кітабы» мен №225 орта мектеп мұражайының «Экспонаттарды тіркеу журналы» тұр.</p>'},
+  ardager:{id:'Стенд', title:'Ұлы Отан соғысының ардагерлері. Тыл ардагерлері',
+    html:'<p>Стендте Ұлы Отан соғысына қатысқан ардагерлер мен тылда еңбек еткен жерлестердің суреттері қойылған. Жанында «Ұлы Отан соғысы 1941–1945» және «Тылдағы жанқиярлық еңбек» тақтайшалары бар. Астындағы витринада ардагерлердің суреттері, құжаттары және «Майдангер ағаларым» жинағы сақталған.</p>',
+    ids:['ММ-008','ММ-025','ММ-024','ММ-010','ММ-022']},
+  qr:{id:'Стенд', title:'Жанқожа батыр туралы деректер',
+    html:'<p>Жасыл стендтегі парақтарда Жанқожа батыр мен оған қатысты нысандар туралы мәліметтер QR-кодтармен берілген. Астындағы витринада «Ел қорғаны Ер Жәкем», «Наркескен», «Жанқожа батыр туралы жырлар» кітаптары қойылған.</p>'},
+  meshit:{id:'Макет', title:'Жанқожа атындағы ауыл мешіті', html:'<p>Бұл — Жанқожа атындағы ауыл мешітінің макеті. Күмбезді, мұнаралы ғимарат өлкенің рухани нысандарының бірі.</p>'},
+  kiim:{id:'Экспозиция', title:'Оғыз киімі', html:'<p>Манекенге оғыз киімінің үлгісі кигізілген. Белдігі мен өңіріне әшекейлер тігілген.</p>'},
+  qyzylqum:{id:'Стенд', title:'Қызылқұм өңірінің тарихы', html:'<p>Көк барқытты стендте Қызылқұм өңірінің тарихына қатысты тұлғалардың суреттері орналастырылған.</p>'},
+  sorelar:{id:'Сөрелер', title:'Стенд астындағы сөрелер',
+    html:'<p>Стендтердің астындағы сөрелерде археологиялық олжалар, тұрмыстық бұйымдар, пионер аспаптары, телефон аппараттары, кәсіподақ билеттері және мектеп мұрағаты сақталған. Суреттерді ауыстырып, жарқыраған нүктелерді басыңыз.</p>',
+    ids:['ММ-013','ММ-014','ММ-005','ММ-006','ММ-004','ММ-020','ММ-021','ММ-023']},
+  mektep:{id:'Стенд', title:'Мектеп тарихы',
+    html:'<p>Стендте мектеп тарихына арналған материалдар QR-кодтармен ұсынылған: «Мектеп тарихы», «Грант иегерлері», «Ардагер ұстаздар», «Алтын белгі иегерлері», «Сөз құдіретін сезінген шәкірттер». Кодты телефонмен оқып, толық мәліметті ашуға болады.</p>'}
+};
+
+/* ===== Панорама ===== */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d'), view=document.getElementById('view'), layer=document.getElementById('hsLayer');
+const pano=new Image(); pano.src='img/pano.webp';
+let PW=1,PH=1,R=1, cw=0,ch=0,dpr=1;
+let yaw=0.75*Math.PI*2/2.6, f=600, voff=0, fMin=600, fMax=2400;
+let vel=0, auto=true, started=false, busy=false, mode='room', dirty=true, idleT=0, tween=null;
+const TAU=Math.PI*2; const SPAN=3.6; let TH=SPAN;
+const wrap=a=>{a%=TAU; if(a>Math.PI)a-=TAU; if(a<-Math.PI)a+=TAU; return a};
+
+function resize(){
+  dpr=Math.min(2,devicePixelRatio||1); cw=innerWidth; ch=innerHeight;
+  cv.width=cw*dpr; cv.height=ch*dpr;
+  fMin=(ch/2)*R/(PH/2)*1.02; fMin=Math.max(fMin, cw/2/Math.tan(1.25)); fMax=Math.max(fMin*1.35,R*1.6);
+  f=Math.min(fMax,Math.max(fMin,f)); clampV(); dirty=true;
+}
+function clampY(){const h=Math.atan(cw/2/f); const lo=h, hi=TH-h; yaw=lo>hi?TH/2:Math.max(lo,Math.min(hi,yaw))}
+function clampV(){clampY();const lim=Math.max(0,PH/2-(ch/2)*R/f-1); voff=Math.max(-lim,Math.min(lim,voff))}
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle='#05101c'; ctx.fillRect(0,0,cw,ch);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  const step=1, cy=PH/2+voff;
+  for(let sx=0;sx<cw;sx+=step){
+    const xs=sx+step/2-cw/2, d=Math.sqrt(xs*xs+f*f), th=yaw+Math.atan(xs/f);
+    let u=th*R; if(u<0||u>PW) continue;
+    const k=R/d, sw=Math.max(.5,step*R*f/(d*d)), sh=ch*k, sy=cy-sh/2;
+    if(u+sw>PW) u=PW-sw;
+    ctx.drawImage(pano,u,sy,sw,sh,sx,0,step+.35,ch);
+  }
+  placeHotspots(); updateMini();
+}
+function project(u,v){
+  const th=u/100*TH, dlt=th-yaw; if(Math.abs(dlt)>1.35) return null;
+  const xs=f*Math.tan(dlt), d=Math.sqrt(xs*xs+f*f), ys=(v/100*PH-(PH/2+voff))*d/R;
+  return {x:cw/2+xs,y:ch/2+ys};
+}
+/* hotspot DOM */
+POINTS.forEach(p=>{
+  const b=document.createElement('button'); b.className='hs';
+  const n=(p.shots||p.walkHs||[]).length;
+  b.innerHTML='<span class="pulse"></span><span class="ring"></span>'+(n>1?'<span class="cnt">'+n+'</span>':'')+'<span class="lbl">'+p.l+'</span>';
+  b.setAttribute('aria-label',p.l);
+  b.addEventListener('pointerdown',e=>e.stopPropagation());
+  b.addEventListener('click',e=>{e.stopPropagation(); if(!busy) openPoint(p)});
+  layer.appendChild(b); p.el=b;
+});
+document.getElementById('hsCount').textContent=POINTS.length+' нүкте · '+Object.keys(EX).length+' жәдігер';
+function placeHotspots(){
+  POINTS.forEach(p=>{const q=project(p.u,p.v); if(!q||q.x<-40||q.x>cw+40){p.el.style.display='none';return}
+    p.el.style.display=''; p.el.style.transform='translate('+q.x+'px,'+q.y+'px)';});
+}
+/* minimap */
+const strip=document.getElementById('strip'), win=document.getElementById('win');
+strip.style.backgroundImage='url(img/pano.webp)';
+POINTS.forEach(p=>{const d=document.createElement('i'); d.className='dot'; d.style.left=p.u+'%'; d.style.top=p.v+'%'; strip.appendChild(d)});
+function updateMini(){
+  const hf=2*Math.atan(cw/2/f), w=hf/TH*100; const c=yaw/TH*100;
+  win.style.width=w+'%'; win.style.left=(c-w/2)+'%';
+  const deg=Math.round(yaw/TH*TH*180/Math.PI);
+  document.getElementById('degTxt').textContent=deg+'°';
+  document.getElementById('compass').style.transform='rotate('+deg+'deg)';
+}
+strip.addEventListener('click',e=>{ if(busy||mode!=='room')return; const r=strip.getBoundingClientRect(); const u=(e.clientX-r.left)/r.width;
+  animate({yaw:u*TH},900); idleT=performance.now()});
+
+/* ===== Анимация ===== */
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function animate(to,dur,cb){
+  const from={yaw,f,voff}; const t0=performance.now();
+  tween={step(t){const k=Math.min(1,(t-t0)/dur), e=ease(k);
+    if(to.yaw!=null) yaw=from.yaw+(to.yaw-from.yaw)*e;
+    if(to.f!=null) f=from.f+(to.f-from.f)*e;
+    if(to.voff!=null) voff=from.voff+(to.voff-from.voff)*e;
+    clampV(); dirty=true; if(k>=1){tween=null; cb&&cb()}}};
+}
+function loop(t){
+  if(tween) tween.step(t);
+  else if(mode==='room'&&started&&!drag){
+    if(Math.abs(vel)>1e-5){yaw+=vel; vel*=.94; clampY(); dirty=true}
+    else if(auto&&t-idleT>3500){const y0=yaw; yaw+=0.0009*adir; clampY(); if(yaw===y0||Math.abs(yaw-y0)<1e-6) adir*=-1; dirty=true}
+  }
+  if(dirty&&pano.complete&&PW>1){render(); dirty=false}
+  requestAnimationFrame(loop);
+}
+
+/* ===== Сүйреу ===== */
+let drag=null, adir=1;
+view.addEventListener('pointerdown',e=>{ if(busy||mode!=='room')return; drag={x:e.clientX,y:e.clientY,yaw,voff,lx:e.clientX,t:performance.now()}; vel=0; view.classList.add('drag'); view.setPointerCapture(e.pointerId); hideHint()});
+view.addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+  yaw=drag.yaw-dx/f; voff=drag.voff-dy*R/f; clampV();
+  const now=performance.now(); vel=-(e.clientX-drag.lx)/f*16/Math.max(8,now-drag.t); drag.lx=e.clientX; drag.t=now; dirty=true; idleT=now});
+const endDrag=()=>{drag=null; view.classList.remove('drag')};
+view.addEventListener('pointerup',endDrag); view.addEventListener('pointercancel',endDrag);
+view.addEventListener('wheel',e=>{ if(busy||mode!=='room')return; e.preventDefault(); f=Math.min(fMax,Math.max(fMin,f*(e.deltaY<0?1.1:.91))); clampV(); dirty=true; idleT=performance.now()},{passive:false});
+
+/* ===== Нүктені ашу: жақындау ===== */
+const panel=document.getElementById('panel'), cu=document.getElementById('cu'), cuImg=document.getElementById('cuImg'), cuFrame=document.getElementById('cuFrame');
+let saved=null, curPoint=null, shotIdx=0;
+function openPoint(p){
+  if(mode!=='room') return;
+  busy=true; curPoint=p; saved={yaw,f,voff}; document.body.classList.add('busy'); hideHint();
+  document.getElementById('mini').classList.add('hide');
+  const pw=innerWidth>760?Math.min(440,innerWidth):0;
+  const fz=p.walk?fMax:Math.min(fMax,fMin*(p.shots?2.2:1.8));
+  const tYaw=p.u/100*TH+(pw/2)/fz; // панель орнына ығыстыру
+  const tV=(p.v/100*PH-PH/2);
+  if(p.walk) setTimeout(()=>showWalk(p),850);
+  animate({yaw:tYaw,f:fz,voff:tV},p.walk?1900:1500,()=>{
+    mode='inspect'; busy=false; document.getElementById('back').classList.add('show');
+    if(p.shots&&p.shots.length){ showShots(p.shots,0) }
+  });
+  setTimeout(()=>showInfo(p),900);
+}
+let walkOn=false;
+const walk=document.getElementById('walk'), walkIn=document.getElementById('walkIn');
+function walkFit(){
+  const pw=innerWidth>760?Math.min(440,innerWidth):0, W=innerWidth-pw, H=innerWidth>760?innerHeight:innerHeight*.38;
+  const img=document.getElementById('walkImg'), iw=img.naturalWidth||960, ih=img.naturalHeight||1280;
+  const s=Math.min((W-40)/iw,(H-110)/ih); walkIn.style.width=iw*s+'px'; walkIn.style.height=ih*s+'px';
+  walkIn.style.marginLeft=-iw*s/2+'px'; walkIn.style.marginTop=(-ih*s/2+20)+'px';
+}
+function showWalk(p){
+  document.documentElement.style.setProperty('--pw',(innerWidth>760?Math.min(440,innerWidth):0)+'px');
+  const img=document.getElementById('walkImg'); document.getElementById('walkBg').style.backgroundImage='url('+p.walk+')';
+  const go=()=>{walkFit(); walkIn.querySelectorAll('.hs').forEach(x=>x.remove());
+    (p.walkHs||[]).forEach(h=>{const b=document.createElement('button'); b.className='hs'; b.style.left=h.x+'%'; b.style.top=h.y+'%';
+      b.innerHTML='<span class="pulse"></span><span class="ring"></span><span class="lbl">'+h.l+'</span>'; b.onclick=()=>showShots([h.shot],0); walkIn.appendChild(b)});
+    walkIn.style.transition='none'; walkIn.style.transform='scale(.62)'; walkIn.getBoundingClientRect();
+    walkIn.style.transition=''; walk.classList.add('show'); walkIn.style.transform='scale(1)'; walkOn=true;};
+  if(img.getAttribute('src')===p.walk&&img.complete) go(); else {img.onload=go; img.src=p.walk}
+}
+function hideWalk(){ if(!walkOn)return; walkOn=false; walk.classList.remove('show'); walkIn.style.transform='scale(.7)'}
+addEventListener('resize',()=>{if(walkOn)walkFit()});
+function showShots(list,i){
+  shotIdx=i; const src=list[i];
+  document.documentElement.style.setProperty('--pw',(innerWidth>760?Math.min(440,innerWidth):0)+'px');
+  cuImg.style.opacity='0';
+  const im=new Image(); im.onload=()=>{cuImg.src=src; cuImg.style.opacity='1'; buildSub(src)}; im.src=src;
+  document.getElementById('cuCap').textContent=CAP[src]||'';
+  cu.classList.add('show');
+  const multi=list.length>1;
+  document.getElementById('cuPrev').hidden=!multi; document.getElementById('cuNext').hidden=!multi;
+  const dots=document.getElementById('cuDots');
+  dots.innerHTML=multi?list.map((s,k)=>'<button class="'+(k===i?'on':'')+'" data-k="'+k+'"><img src="'+s+'" alt=""></button>').join(''):'';
+  dots.querySelectorAll('button').forEach(b=>b.onclick=()=>showShots(list,+b.dataset.k));
+}
+function buildSub(src){
+  cuFrame.querySelectorAll('.hs').forEach(x=>x.remove());
+  (SUB[src]||[]).forEach(s=>{const e=EX[s.ex]; if(!e)return;
+    const b=document.createElement('button'); b.className='hs'; b.style.left=s.x+'%'; b.style.top=s.y+'%';
+    b.innerHTML='<span class="pulse"></span><span class="ring"></span><span class="lbl">'+e.title+'</span>';
+    b.onclick=()=>showEx(s.ex,true); cuFrame.appendChild(b)});
+}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function textHtml(t){return t.split(/\n\s*\n/).map((p,i)=>'<p'+(i===0?' class="lead"':'')+'>'+esc(p.trim())+'</p>').join('')}
+function showInfo(p){
+  if(p.ex){showEx(p.ex,false); return}
+  const d=INFO[p.info]; let h=d.html||'';
+  if(d.list) h+='<ol class="p-list">'+d.list.map((x,i)=>'<li><em>'+(i+1)+'</em>'+esc(x)+'</li>').join('')+'</ol>';
+  if(d.ids) h+='<p style="font:700 12px Inter;letter-spacing:.06em;color:#9a7536;margin:18px 0 8px">МҰНДАҒЫ ЖӘДІГЕРЛЕР</p><ol class="p-list">'+d.ids.filter(k=>EX[k]).map(k=>'<li><em>'+k+'</em><button data-ex="'+k+'">'+esc(EX[k].title)+'</button></li>').join('')+'</ol>';
+  if(d.note) h+='<p class="p-note">'+esc(d.note)+'</p>';
+  setPanel(d.id,d.title,h);
+}
+function showEx(id,fromSub){
+  const e=EX[id]; let h=textHtml(e.text);
+  if(fromSub&&curPoint&&!curPoint.ex&&INFO[curPoint.info]) h='<p><button data-back="1" style="font:600 13px Inter;color:#9a7536">‹ '+esc(INFO[curPoint.info].title)+'</button></p>'+h;
+  setPanel(id,e.title,h);
+}
+function setPanel(id,title,html){
+  document.getElementById('pId').textContent=id; document.getElementById('pTitle').textContent=title;
+  const b=document.getElementById('pBody'); b.innerHTML=html; b.scrollTop=0;
+  b.querySelectorAll('[data-ex]').forEach(x=>x.onclick=()=>showEx(x.dataset.ex,true));
+  b.querySelectorAll('[data-back]').forEach(x=>x.onclick=()=>showInfo(curPoint));
+  panel.classList.add('open');
+}
+function closePoint(cb){
+  if(walkOn&&cu.classList.contains('show')&&!cb){cu.classList.remove('show'); return}
+  hideWalk();
+  panel.classList.remove('open'); cu.classList.remove('show'); document.getElementById('back').classList.remove('show');
+  document.getElementById('cuPrev').hidden=true; document.getElementById('cuNext').hidden=true; document.getElementById('cuDots').innerHTML='';
+  if(mode==='room'){cb&&cb();return}
+  busy=true;
+  animate({yaw:saved.yaw,f:saved.f,voff:saved.voff},1200,()=>{mode='room'; busy=false; document.body.classList.remove('busy');
+    document.getElementById('mini').classList.remove('hide'); idleT=performance.now(); cb&&cb()});
+}
+function nextPoint(){
+  if(busy)return; const sorted=[...POINTS].sort((a,b)=>a.u-b.u); const k=sorted.indexOf(curPoint);
+  const nx=sorted[(k+1)%sorted.length]; closePoint(()=>openPoint(nx));
+}
+document.getElementById('cuPrev').onclick=()=>{const l=curPoint.shots; showShots(l,(shotIdx-1+l.length)%l.length)};
+document.getElementById('cuNext').onclick=()=>{const l=curPoint.shots; showShots(l,(shotIdx+1)%l.length)};
+document.getElementById('back').onclick=()=>closePoint();
+document.getElementById('pClose').onclick=()=>{cu.classList.remove('show');closePoint()};
+document.getElementById('pBack').onclick=()=>{cu.classList.remove('show');closePoint()};
+document.getElementById('pNext').onclick=nextPoint;
+document.getElementById('btnAuto').onclick=e=>{auto=!auto; e.currentTarget.classList.toggle('on',auto)};
+document.getElementById('btnFs').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+function hideHint(){document.getElementById('hint').style.opacity='0'}
+addEventListener('keydown',e=>{
+  if(e.key==='Escape') closePoint();
+  if(mode==='inspect'&&curPoint&&curPoint.shots&&curPoint.shots.length>1){ if(e.key==='ArrowRight') document.getElementById('cuNext').click(); if(e.key==='ArrowLeft') document.getElementById('cuPrev').click(); return}
+  if(mode==='room'&&!busy){ if(e.key==='ArrowRight'){vel=.03;idleT=performance.now()} if(e.key==='ArrowLeft'){vel=-.03;idleT=performance.now()} }
+});
+addEventListener('resize',resize);
+pano.onload=()=>{PW=pano.naturalWidth; PH=pano.naturalHeight; R=PW/SPAN; TH=SPAN; yaw=0.42*TH; resize(); f=fMin*1.15; dirty=true;
+  const s=document.getElementById('start'); s.disabled=false; s.innerHTML='Саяхатты бастау <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';};
+document.getElementById('start').onclick=()=>{document.getElementById('intro').classList.add('out'); started=true; idleT=performance.now();
+  f=fMax*.6; animate({f:fMin*1.15},2200); setTimeout(hideHint,8000)};
+[...new Set(POINTS.flatMap(p=>p.shots||[]))].forEach(s=>{const i=new Image();i.src=s});
+requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
