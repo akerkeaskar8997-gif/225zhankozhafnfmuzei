@@ -1700,6 +1700,10 @@ async function loadPages(dir){
   if(BOOK_CACHE[dir]) return BOOK_CACHE[dir];
   const res = await fetch(`${dir}/pages.json`); if(!res.ok) throw new Error(res.status);
   const data = await res.json();
+  if(data.parts > 1){
+    const rest = await Promise.all(Array.from({length:data.parts-1}, (_,k) => fetch(`${dir}/pages-${k+2}.json`).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })));
+    rest.forEach(p => data.pages.push(...p.pages));
+  }
   const urls = data.pages.map(b64 => { const bin = atob(b64), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return URL.createObjectURL(new Blob([u8], {type:"image/webp"})); });
   return (BOOK_CACHE[dir] = urls);
 }
